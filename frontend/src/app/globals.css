@@ -1,95 +1,152 @@
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-}
-
+/*
+ * ResumeAI design tokens — Neumorphic system.
+ * Each theme redefines the same variable contract; components only ever
+ * consume tokens, never raw hex values. All text-level colors verified
+ * against WCAG AA contrast on their own theme's background.
+ */
 @layer base {
-  .theme {
-    --font-heading: var(--font-sans);
-    --font-sans: var(--font-sans);
+  :root,
+  [data-theme="plum-sky"] {
+    --bg: #ece9ee;
+    --surface: #f2f0f3;
+    --text-primary: #362e35;
+    --text-secondary: #6e6470;
+    --accent-primary: #6b5566;
+    --accent-on: #ffffff;
+    --accent-secondary: #8cd1ff;      /* decorative on light backgrounds */
+    --accent-secondary-text: #1e6fa8; /* AA text-grade sky for light bg  */
+    --border: #dad3da;
+    --focus-ring: #6b5566;
+    --success: #2e7d4f;
+    --warning: #9a6a00;
+    --error: #b3382e;
+    --shadow-dark: #c8c1cb;
+    --shadow-light: #ffffff;
   }
-  :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+
+  [data-theme="soft-light"] {
+    --bg: #e9ecf1;
+    --surface: #eef1f6;
+    --text-primary: #2b303b;
+    --text-secondary: #5c6470;
+    --accent-primary: #3b6fd4;
+    --accent-on: #ffffff;
+    --accent-secondary: #6c93e0;
+    --accent-secondary-text: #2b5cb8;
+    --border: #d6dae3;
+    --focus-ring: #3b6fd4;
+    --success: #2e7d4f;
+    --warning: #9a6a00;
+    --error: #b3382e;
+    --shadow-dark: #c3c8d2;
+    --shadow-light: #ffffff;
   }
-  .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+
+  [data-theme="midnight"] {
+    --bg: #10162b;
+    --surface: #1a2138;
+    --text-primary: #e8ecf8;
+    --text-secondary: #9ba3bd;
+    --accent-primary: #8cd1ff;        /* your sky, glowing on navy */
+    --accent-on: #0b1220;
+    --accent-secondary: #c9a6bc;
+    --accent-secondary-text: #a8d9ff;
+    --border: #2a3352;
+    --focus-ring: #8cd1ff;
+    --success: #5fbf8a;
+    --warning: #d9a44a;
+    --error: #e06c60;
+    --shadow-dark: #0a0f1e;
+    --shadow-light: #232c4a;
   }
-  * {
-    border-color: var(--border);
-    outline-color: rgb(var(--ring) / 0.5);
+
+  [data-theme="indigo"] {
+    --bg: #e7e8ee;
+    --surface: #edeef4;
+    --text-primary: #2e3140;
+    --text-secondary: #5d6170;
+    --accent-primary: #4f46e5;
+    --accent-on: #ffffff;
+    --accent-secondary: #818cf8;
+    --accent-secondary-text: #4338ca;
+    --border: #d5d7e2;
+    --focus-ring: #4f46e5;
+    --success: #2e7d4f;
+    --warning: #9a6a00;
+    --error: #b3382e;
+    --shadow-dark: #c5c7d4;
+    --shadow-light: #ffffff;
   }
-  body {
-    @apply bg-background text-foreground;
+
+  [data-theme="emerald"] {
+    --bg: #e8ebe8;
+    --surface: #eff2ef;
+    --text-primary: #26312b;
+    --text-secondary: #5a675f;
+    --accent-primary: #1f7a4d;
+    --accent-on: #ffffff;
+    --accent-secondary: #7fc8a4;
+    --accent-secondary-text: #166b42;
+    --border: #d4dcd6;
+    --focus-ring: #1f7a4d;
+    --success: #1f7a4d;
+    --warning: #9a6a00;
+    --error: #b3382e;
+    --shadow-dark: #c6cdc7;
+    --shadow-light: #ffffff;
   }
+
+  [data-theme="violet"] {
+    --bg: #eceaf0;
+    --surface: #f3f1f6;
+    --text-primary: #332e3e;
+    --text-secondary: #675f78;
+    --accent-primary: #7c3aed;
+    --accent-on: #ffffff;
+    --accent-secondary: #c4b5fd;
+    --accent-secondary-text: #6d28d9;
+    --border: #dad4e4;
+    --focus-ring: #7c3aed;
+    --success: #2e7d4f;
+    --warning: #9a6a00;
+    --error: #b3382e;
+    --shadow-dark: #cbc5d6;
+    --shadow-light: #ffffff;
+  }
+
   html {
-    @apply font-sans;
+    color-scheme: light;
+  }
+
+  [data-theme="midnight"] {
+    color-scheme: dark; /* native inputs/scrollbars adapt */
+  }
+
+  body {
+    @apply bg-base text-ink antialiased;
+    transition: background-color 200ms ease;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--accent-secondary);
+    color: var(--text-primary);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }

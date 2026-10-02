@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+
+import { ThemeProvider } from "@/themes/theme-provider";
+
 import "./globals.css";
 
 const geistSans = localFont({
@@ -19,15 +22,28 @@ export const metadata: Metadata = {
   description: "AI-powered resume analysis and job matching",
 };
 
+/**
+ * Runs synchronously before first paint: reads the saved theme from
+ * localStorage and sets it on <html>, so the user never sees a flash of
+ * the wrong theme. Fails silently where storage is blocked.
+ */
+const themeInitScript = `
+(function () {
+  try {
+    var t = localStorage.getItem("resumeai-theme");
+    if (t) document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+})();
+`;
+
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="plum-sky" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {children}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

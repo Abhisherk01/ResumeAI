@@ -1,101 +1,80 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useTheme } from "@/themes/theme-provider";
+import { THEMES } from "@/themes/themes";
+
+const swatches = [
+  { label: "accent", className: "bg-accent" },
+  { label: "accent-soft", className: "bg-accent-soft" },
+  { label: "surface", className: "bg-surface border border-border" },
+  { label: "success", className: "bg-success" },
+  { label: "warning", className: "bg-warning" },
+  { label: "error", className: "bg-error" },
+];
+
+export default function ThemePreviewPage() {
+  const { theme, setTheme } = useTheme();
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <main className="mx-auto max-w-4xl p-8">
+      <h1 className="text-3xl font-bold tracking-tight">Theme system preview</h1>
+      <p className="mt-2 text-ink-soft">
+        Temporary verification page — replaced by the landing page in Step 4.
+        Active theme: <span className="font-semibold text-accent">{theme}</span>
+      </p>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      <div role="group" aria-label="Select theme" className="mt-6 flex flex-wrap gap-3">
+        {THEMES.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            aria-pressed={theme === t.id}
+            onClick={() => setTheme(t.id)}
+            className={`rounded-neu bg-surface px-4 py-2 text-sm font-medium shadow-neu-raised-sm transition-shadow hover:shadow-neu-raised ${
+              theme === t.id ? "shadow-neu-inset text-accent" : "text-ink"
+            }`}
           >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <section className="mt-10 grid gap-6 sm:grid-cols-2">
+        <div className="rounded-neu-lg bg-surface p-6 shadow-neu-raised">
+          <h2 className="font-semibold">Raised card</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Soft outer shadows in both directions — the core Neumorphic surface.
+          </p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+        <div className="rounded-neu-lg bg-surface p-6">
+          <label htmlFor="demo-input" className="text-sm font-medium">
+            Inset input
+          </label>
+          <input
+            id="demo-input"
+            placeholder="Type to feel the inset surface…"
+            className="mt-2 w-full rounded-neu bg-base px-4 py-2 text-sm shadow-neu-inset placeholder:text-ink-soft"
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          <button
+            type="button"
+            className="mt-4 rounded-neu bg-accent px-4 py-2 text-sm font-medium text-on-accent shadow-neu-raised-sm hover:shadow-neu-raised disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Accent button
+          </button>
+        </div>
+      </section>
+
+      <section className="mt-10 rounded-neu-lg bg-surface p-6 shadow-neu-raised">
+        <h2 className="font-semibold">Token swatches</h2>
+        <div className="mt-4 flex flex-wrap gap-4">
+          {swatches.map((s) => (
+            <div key={s.label} className="text-center">
+              <div className={`h-12 w-12 rounded-neu shadow-neu-inset ${s.className}`} />
+              <p className="mt-1 text-xs text-ink-soft">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </main>
   );
 }
