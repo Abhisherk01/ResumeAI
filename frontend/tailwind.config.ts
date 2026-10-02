@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import animate from "tailwindcss-animate";
 
 /**
  * All colors reference CSS variables defined in src/app/globals.css.
@@ -50,9 +51,6 @@ const config: Config = {
       },
     },
   },
-  plugins: [
-    // tailwindcss-animate will be re-added when we install animated shadcn
-    // components (dialogs/toasts) in Step 2 — no component uses it yet.
-  ],
+  plugins: [animate],
 };
 export default config;
