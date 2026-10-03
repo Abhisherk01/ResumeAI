@@ -38,10 +38,12 @@ Readiness	[http://localhost:8000/ready](http://localhost:8000/ready)
 
 Useful Commands
 docker compose exec backend pytest -v        # backend testsdocker compose exec backend ruff check .     # backend lintdocker compose exec backend ruff format .    # backend formatdocker compose exec frontend npm run lint    # frontend lintcd frontend && npm run format                # frontend format
+
+docker compose exec frontend npm test # frontend component tests
+
 Never run npm run build while the dev server container is running — bothwrite to the same .next directory. Stop the container first.
 
 Development Status
-
 
 
 | **Phase** | **Scope**                                   | **Status** |
