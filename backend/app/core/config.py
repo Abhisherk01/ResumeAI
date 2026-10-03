@@ -18,6 +18,16 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "postgresql+psycopg://resumeai:resumeai@db:5432/resumeai"
 
+    # --- Sessions & tokens ---
+    SESSION_TTL_HOURS: int = 24 * 7        # server-side session lifetime
+    EMAIL_TOKEN_TTL_HOURS: int = 24        # email verification links
+    RESET_TOKEN_TTL_MINUTES: int = 30      # password reset links (short by design)
+
+    @property
+    def cookie_secure(self) -> bool:
+        """Cookies carry the Secure flag everywhere except local development."""
+        return self.ENVIRONMENT == "production"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
