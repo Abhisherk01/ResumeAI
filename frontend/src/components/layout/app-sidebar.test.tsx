@@ -10,11 +10,17 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+import { ThemeProvider } from "@/themes/theme-provider";
+
 import { AppSidebar } from "./app-sidebar";
 
 describe("AppSidebar", () => {
   it("marks the active route and exposes the navigation landmark", () => {
-    render(<AppSidebar />);
+    render(
+      <ThemeProvider>
+        <AppSidebar />
+      </ThemeProvider>
+    );
     expect(screen.getByRole("link", { name: /dashboard/i })).toHaveAttribute(
       "aria-current",
       "page"
