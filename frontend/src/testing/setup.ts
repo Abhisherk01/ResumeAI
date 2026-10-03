@@ -6,10 +6,7 @@ import "@testing-library/jest-dom/vitest";
 afterEach(cleanup);
 
 // jsdom has no ResizeObserver; Radix primitives measure with it.
-// NOTE: we deliberately use a typeof check instead of `!("ResizeObserver" in window)`.
-// TS's negative `in` narrowing collapses `window` to `never` here, because lib.dom
-// declares ResizeObserver as always present — making the assignment a type error.
-if (typeof window !== "undefined" && typeof window.ResizeObserver === "undefined") {
+if (typeof window !== "undefined" && !("ResizeObserver" in window)) {
   class ResizeObserverMock {
     observe(): void {}
     unobserve(): void {}
