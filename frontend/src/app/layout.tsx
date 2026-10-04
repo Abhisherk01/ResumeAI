@@ -1,50 +1,44 @@
-import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { redirect } from "next/navigation";
 
-import { ThemeProvider } from "@/themes/theme-provider";
-
-import "./globals.css";
-
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
-
-export const metadata: Metadata = {
-  title: "ResumeAI",
-  description: "AI-powered resume analysis and job matching",
-};
+import { AuthProvider } from "@/components/auth/auth-provider";
+import { AppSidebar } from "@/components/layout/app-sidebar";
+import { getCurrentUserServer } from "@/lib/auth/server";
 
 /**
- * Runs synchronously before first paint: reads the saved theme from
- * localStorage and sets it on <html>, so the user never sees a flash of
- * the wrong theme. Fails silently where storage is blocked.
+ * Server-side auth gate (D1): the browser's cookies are forwarded to
+ * GET /auth/me BEFORE any protected content renders. Not signed in ->
+ * redirect to /login, no protected-content flash. The resolved user seeds
+ * the client AuthProvider so interactive components need no second /me.
  */
-const themeInitScript = `
-(function () {
-  try {
-    var t = localStorage.getItem("resumeai-theme");
-    if (t) document.documentElement.setAttribute("data-theme", t);
-  } catch (e) {}
-})();
-`;
-
-export default function RootLayout({
+export default async function AppLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+}: {
+  children: React.ReactNode;
+}) {
+  const user = await getCurrentUserServer();
+  if (!user) {
+    redirect("/login");
+  }
+
   return (
-    <html lang="en" data-theme="plum-sky" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-        <ThemeProvider>{children}</ThemeProvider>
-      </body>
-    </html>
+    <AuthProvider initialUser={user}>
+      <div className="min-h-screen bg-base">
+        <AppSidebar />
+        <div className="lg:pl-64">
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-neu focus:bg-accent focus:px-4 focus:py-2 focus:text-on-accent"
+          >
+            Skip to content
+          </a>
+          <main
+            id="main-content"
+            className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
+          >
+            {children}
+          </main>
+        </div>
+      </div>
+    </AuthProvider>
   );
 }

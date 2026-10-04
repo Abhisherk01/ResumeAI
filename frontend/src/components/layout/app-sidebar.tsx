@@ -8,10 +8,13 @@ import {
   Briefcase,
   FileText,
   LayoutDashboard,
+  LogOut,
   Menu,
   Settings,
 } from "lucide-react";
 
+import { useAuth } from "@/components/auth/auth-provider"; // ADDED
+import { Button } from "@/components/ui/button"; // ADDED
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
@@ -53,6 +56,29 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+// ADDED (7B-5): signed-in user identity + logout, wired to useAuth.
+function SidebarUserBlock() {
+  const { user, logout, isLoggingOut } = useAuth();
+  if (!user) return null;
+  return (
+    <div className="rounded-neu bg-base p-3 shadow-neu-inset">
+      <p className="truncate text-sm font-medium text-ink">{user.name}</p>
+      <p className="truncate text-xs text-ink-soft">{user.email}</p>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="mt-3 w-full"
+        loading={isLoggingOut}
+        onClick={() => void logout()}
+      >
+        <LogOut className="h-4 w-4" aria-hidden="true" />
+        Sign out
+      </Button>
+    </div>
+  );
+}
+
 export function AppSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -76,7 +102,8 @@ export function AppSidebar() {
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-border bg-surface px-4 py-6 lg:flex">
         <Logo className="mb-8 px-1" />
         <SidebarNav />
-        <div className="mt-auto pt-6">
+        <div className="mt-auto space-y-4 pt-6">
+          <SidebarUserBlock />
           <ThemeSwitcher align="start" />
         </div>
       </aside>
@@ -88,7 +115,8 @@ export function AppSidebar() {
           <div className="flex h-full flex-col">
             <Logo className="mb-8" />
             <SidebarNav onNavigate={() => setMobileOpen(false)} />
-            <div className="mt-auto pt-6">
+            <div className="mt-auto space-y-4 pt-6">
+              <SidebarUserBlock />
               <ThemeSwitcher align="start" />
             </div>
           </div>
