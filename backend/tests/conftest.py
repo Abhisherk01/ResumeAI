@@ -11,7 +11,40 @@ from sqlalchemy.orm import Session
 
 from app.core.ratelimit import reset_all_limiters
 from app.db.session import Base, SessionLocal, engine
+from app.infrastructure.email import EmailMessage
 from app.main import app
+from app.services import auth_service
+
+
+class FakeEmailSender:
+    """Test double for the email transport: records every message in memory
+    so tests can assert on exactly what the service sent, with zero I/O.
+    Satisfies the same EmailSender Protocol as ConsoleEmailSender (dev) and
+    the future SMTP sender (Phase 12)."""
+
+    def __init__(self) -> None:
+        self.messages: list[EmailMessage] = []
+
+    def send(self, message: EmailMessage) -> None:
+        self.messages.append(message)
+
+
+@pytest.fixture(autouse=True)
+def _fake_email_sender(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Generator[FakeEmailSender, None, None]:
+    """Swap the recording fake in for EVERY test (autouse): keeps suite
+    output free of console-email noise and makes email behavior assertable
+    per test via the email_outbox fixture."""
+    fake = FakeEmailSender()
+    monkeypatch.setattr(auth_service, "_email_sender", fake)
+    yield fake
+
+
+@pytest.fixture()
+def email_outbox(_fake_email_sender: FakeEmailSender) -> FakeEmailSender:
+    """Read access to what the service 'sent' during the current test."""
+    return _fake_email_sender
 
 
 @pytest.fixture(autouse=True)

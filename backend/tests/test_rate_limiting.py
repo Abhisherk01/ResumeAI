@@ -7,8 +7,10 @@ Strategy:
   limiter's limit via monkeypatch and freeze the limiter's clock by
   monkeypatching app.core.ratelimit.utcnow with a controllable fake —
   real token/session expiry (app.core.clock.utcnow) stays untouched.
+- Since Step 6 (S6-B), verification tokens come from the recorded outbox.
 """
 
+import re
 from datetime import datetime, timedelta
 
 import pytest
@@ -55,11 +57,14 @@ def _register(client: TestClient, *, email: str = "user@example.com") -> Respons
     )
 
 
-def _register_and_verify(client: TestClient, *, email: str = "user@example.com") -> None:
-    response = _register(client, email=email)
-    client.post(
-        f"{AUTH}/verify-email", json={"token": response.json()["dev_verification_token"]}
-    )
+def _register_and_verify(
+    client: TestClient, outbox, *, email: str = "user@example.com"
+) -> None:
+    _register(client, email=email)
+    message = outbox.messages[-1]
+    match = re.search(r"token=([A-Za-z0-9_-]{20,})", message.body)
+    assert match, f"no token in email body: {message.body!r}"
+    client.post(f"{AUTH}/verify-email", json={"token": match.group(1)})
 
 
 def _login(
@@ -72,9 +77,11 @@ def _error_code(response: Response) -> str:
     return response.json()["error"]["code"]
 
 
-def test_login_returns_429_envelope_with_retry_after(client, monkeypatch, fake_clock):
+def test_login_returns_429_envelope_with_retry_after(
+    client, monkeypatch, fake_clock, email_outbox
+):
     monkeypatch.setattr(login_limiter, "limit", 2)
-    _register_and_verify(client)
+    _register_and_verify(client, email_outbox)
 
     assert _login(client).status_code == 200
     assert _login(client).status_code == 200
@@ -86,9 +93,11 @@ def test_login_returns_429_envelope_with_retry_after(client, monkeypatch, fake_c
     assert int(blocked.headers["retry-after"]) == 15 * 60
 
 
-def test_window_slides_and_requests_are_allowed_again(client, monkeypatch, fake_clock):
+def test_window_slides_and_requests_are_allowed_again(
+    client, monkeypatch, fake_clock, email_outbox
+):
     monkeypatch.setattr(login_limiter, "limit", 1)
-    _register_and_verify(client)
+    _register_and_verify(client, email_outbox)
 
     first = _login(client, password="wrong-password")  # consumes the single slot
     assert first.status_code == 401
@@ -101,9 +110,11 @@ def test_window_slides_and_requests_are_allowed_again(client, monkeypatch, fake_
     assert _login(client).status_code == 200
 
 
-def test_retry_after_shrinks_as_the_window_slides(client, monkeypatch, fake_clock):
+def test_retry_after_shrinks_as_the_window_slides(
+    client, monkeypatch, fake_clock, email_outbox
+):
     monkeypatch.setattr(login_limiter, "limit", 1)
-    _register_and_verify(client)
+    _register_and_verify(client, email_outbox)
     _login(client, password="wrong")  # slot consumed at t0
 
     fake_clock.advance(minutes=10)
@@ -112,12 +123,15 @@ def test_retry_after_shrinks_as_the_window_slides(client, monkeypatch, fake_cloc
     assert int(blocked.headers["retry-after"]) == 5 * 60
 
 
-def test_limiters_are_independent(client, monkeypatch):
+def test_limiters_are_independent(client, monkeypatch, email_outbox):
     monkeypatch.setattr(token_limiter, "limit", 1)
-    registration = _register(client)
+    _register(client)
     assert _register(client, email="other@example.com").status_code == 200
 
-    token = registration.json()["dev_verification_token"]
+    message = email_outbox.messages[0]  # the registration email for user@example.com
+    match = re.search(r"token=([A-Za-z0-9_-]{20,})", message.body)
+    assert match
+    token = match.group(1)
     first = client.post(f"{AUTH}/verify-email", json={"token": token})
     second = client.post(f"{AUTH}/verify-email", json={"token": token})
     assert first.status_code == 200
@@ -161,9 +175,9 @@ def test_forwarded_for_keys_buckets_when_proxy_trusted(client, monkeypatch):
     assert chained.status_code == 429  # 203.0.113.7's bucket was exhausted
 
 
-def test_password_reset_requests_are_limited(client, monkeypatch):
+def test_password_reset_requests_are_limited(client, monkeypatch, email_outbox):
     monkeypatch.setattr(password_reset_limiter, "limit", 1)
-    _register_and_verify(client)
+    _register_and_verify(client, email_outbox)
 
     first = client.post(f"{AUTH}/password-reset", json={"email": "user@example.com"})
     second = client.post(f"{AUTH}/password-reset", json={"email": "user@example.com"})

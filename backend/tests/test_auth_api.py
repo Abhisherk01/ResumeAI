@@ -6,16 +6,23 @@ in-memory database as the rest of the suite (Decision B in app/db/session.py).
 
 Every error response must match the project envelope
 {"error": {"code": ..., "message": ...}} — _error_code asserts that shape.
+
+Since Step 6 (Decision S6-B), API responses carry NO tokens in any
+environment: verification and reset links are delivered by email. Tests
+source raw tokens from the recorded outbox (email_outbox fixture) exactly
+the way a real user receives them.
 """
+
+import re
 
 from fastapi.testclient import TestClient
 from httpx import Response
 
-from app.core.config import settings
-
 AUTH = "/api/v1/auth"
 
 PASSWORD = "correct-horse-battery"
+
+_TOKEN_IN_LINK = re.compile(r"token=([A-Za-z0-9_-]{20,})")
 
 
 def _error_code(response: Response) -> str:
@@ -24,6 +31,15 @@ def _error_code(response: Response) -> str:
     error = body["error"]
     assert {"code", "message"} <= set(error)
     return error["code"]
+
+
+def _token_from_outbox(outbox, index: int = -1) -> str:
+    """Extract a raw token from a recorded email's link — the same value a
+    real user gets by email and the frontend reads from the URL."""
+    message = outbox.messages[index]
+    match = _TOKEN_IN_LINK.search(message.body)
+    assert match, f"no token found in email body: {message.body!r}"
+    return match.group(1)
 
 
 def _register(
@@ -48,33 +64,42 @@ def _login(
     return client.post(f"{AUTH}/login", json={"email": email, "password": password})
 
 
-def _register_verify_login(client: TestClient, *, email: str = "user@example.com") -> Response:
-    """Full happy path up to an authenticated session (cookies in the jar)."""
-    registration = _register(client, email=email)
-    _verify(client, registration.json()["dev_verification_token"])
+def _register_verify_login(
+    client: TestClient, outbox, *, email: str = "user@example.com"
+) -> Response:
+    """Full happy path up to an authenticated session (cookies in the jar).
+    The verification token comes from the recorded email, not any response."""
+    _register(client, email=email)
+    _verify(client, _token_from_outbox(outbox))
     return _login(client, email=email)
 
 
 # --- register ----------------------------------------------------------------
 
 
-def test_register_returns_200_with_dev_token_in_test_environment(client):
+def test_register_response_contains_only_a_message(client, email_outbox):
     response = _register(client)
+
     assert response.status_code == 200
-    body = response.json()
-    assert body["dev_verification_token"]  # ENVIRONMENT == "test" here
-    assert body["message"]
+    assert set(response.json()) == {"message"}  # S6-B: no token field, ever
+
+    # Delivery replaced the dev field: exactly one email, to the normalized
+    # address, with a verification link.
+    assert len(email_outbox.messages) == 1
+    message = email_outbox.messages[0]
+    assert message.to == "user@example.com"
+    assert "/verify-email?token=" in message.body
 
 
-def test_register_duplicate_verified_email_is_indistinguishable(client):
+def test_register_duplicate_verified_email_is_indistinguishable(client, email_outbox):
     first = _register(client)
-    _verify(client, first.json()["dev_verification_token"])
+    _verify(client, _token_from_outbox(email_outbox))
 
     second = _register(client)
 
     assert first.status_code == second.status_code == 200
-    assert first.json()["message"] == second.json()["message"]
-    assert second.json()["dev_verification_token"] is None
+    assert first.json() == second.json()  # structurally identical, both bare messages
+    assert len(email_outbox.messages) == 1  # silent no-op sent NO second email
 
 
 def test_register_rejects_short_password_with_envelope(client):
@@ -92,9 +117,9 @@ def test_register_rejects_malformed_email_with_envelope(client):
 # --- verify-email ------------------------------------------------------------
 
 
-def test_verify_email_completes_the_flow_to_login(client):
-    registration = _register(client)
-    verified = _verify(client, registration.json()["dev_verification_token"])
+def test_verify_email_completes_the_flow_to_login(client, email_outbox):
+    _register(client)
+    verified = _verify(client, _token_from_outbox(email_outbox))
     assert verified.status_code == 200
     assert _login(client).status_code == 200
 
@@ -108,8 +133,10 @@ def test_verify_email_unknown_token_returns_400_envelope(client):
 # --- login -------------------------------------------------------------------
 
 
-def test_login_sets_httponly_session_cookie_and_readable_csrf_cookie(client):
-    _register_verify_login(client)
+def test_login_sets_httponly_session_cookie_and_readable_csrf_cookie(
+    client, email_outbox
+):
+    _register_verify_login(client, email_outbox)
     response = _login(client)
     cookies = response.headers.get_list("set-cookie")
     session_cookie = next(c for c in cookies if c.startswith("resumeai_session="))
@@ -119,17 +146,16 @@ def test_login_sets_httponly_session_cookie_and_readable_csrf_cookie(client):
     assert "httponly" not in csrf_cookie.lower()  # JS MUST read this one
 
 
-def test_login_response_never_contains_password_material(client):
-    _register_verify_login(client)
+def test_login_response_never_contains_password_material(client, email_outbox):
+    _register_verify_login(client, email_outbox)
     response = _login(client)
     assert response.status_code == 200
     assert b"password" not in response.content
     assert set(response.json()) == {"id", "email", "name", "email_verified", "created_at"}
 
 
-def test_login_wrong_password_and_unknown_email_share_one_error(client):
-    registration = _register(client)
-    _verify(client, registration.json()["dev_verification_token"])
+def test_login_wrong_password_and_unknown_email_share_one_error(client, email_outbox):
+    _register_verify_login(client, email_outbox)
 
     wrong_password = _login(client, password="definitely-wrong")
     unknown_email = _login(client, email="ghost@example.com")
@@ -152,16 +178,16 @@ def test_login_unverified_email_returns_403_email_not_verified(client):
 # --- logout ------------------------------------------------------------------
 
 
-def test_logout_requires_csrf_header_and_session_survives_failure(client):
-    _register_verify_login(client)
+def test_logout_requires_csrf_header_and_session_survives_failure(client, email_outbox):
+    _register_verify_login(client, email_outbox)
     response = client.post(f"{AUTH}/logout")  # no X-CSRF-Token header
     assert response.status_code == 403
     assert _error_code(response) == "csrf_failed"
     assert client.get(f"{AUTH}/me").status_code == 200  # session untouched
 
 
-def test_logout_rejects_forged_csrf_token(client):
-    _register_verify_login(client)
+def test_logout_rejects_forged_csrf_token(client, email_outbox):
+    _register_verify_login(client, email_outbox)
     response = client.post(
         f"{AUTH}/logout", headers={"X-CSRF-Token": "forged-value"}
     )
@@ -169,8 +195,8 @@ def test_logout_rejects_forged_csrf_token(client):
     assert _error_code(response) == "csrf_failed"
 
 
-def test_logout_revokes_session_and_clears_cookies(client):
-    _register_verify_login(client)
+def test_logout_revokes_session_and_clears_cookies(client, email_outbox):
+    _register_verify_login(client, email_outbox)
     csrf = client.cookies.get("csrf_token")
     response = client.post(f"{AUTH}/logout", headers={"X-CSRF-Token": csrf})
     assert response.status_code == 204
@@ -181,8 +207,8 @@ def test_logout_revokes_session_and_clears_cookies(client):
 # --- me ----------------------------------------------------------------------
 
 
-def test_me_returns_the_authenticated_user(client):
-    _register_verify_login(client)
+def test_me_returns_the_authenticated_user(client, email_outbox):
+    _register_verify_login(client, email_outbox)
     response = client.get(f"{AUTH}/me")
     assert response.status_code == 200
     body = response.json()
@@ -199,28 +225,42 @@ def test_me_without_a_session_returns_401_envelope(client):
 # --- password reset ----------------------------------------------------------
 
 
-def test_password_reset_request_returns_dev_token_for_known_email(client):
-    _register_verify_login(client)
+def test_password_reset_request_sends_exactly_one_email_with_reset_link(
+    client, email_outbox
+):
+    _register_verify_login(client, email_outbox)
+    emails_before = len(email_outbox.messages)
+
     response = client.post(f"{AUTH}/password-reset", json={"email": "user@example.com"})
+
     assert response.status_code == 200
-    assert response.json()["dev_reset_token"]
+    assert set(response.json()) == {"message"}  # S6-B: no token field, ever
+    assert len(email_outbox.messages) == emails_before + 1
+    message = email_outbox.messages[-1]
+    assert message.to == "user@example.com"
+    assert "/reset-password?token=" in message.body
+    assert "30 minutes" in message.body  # explicit expiry statement
 
 
-def test_password_reset_request_is_indistinguishable_in_production(client, monkeypatch):
-    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+def test_password_reset_request_is_indistinguishable(client, email_outbox):
+    """Known vs unknown email: identical status, identical body — and this
+    now holds structurally in EVERY environment (S6-B), not just gated ones.
+    Only the side effect (the email) distinguishes them, server-side."""
     unknown = client.post(f"{AUTH}/password-reset", json={"email": "ghost@example.com"})
-    _register_verify_login(client)
+    _register_verify_login(client, email_outbox)
     known = client.post(f"{AUTH}/password-reset", json={"email": "user@example.com"})
+
     assert unknown.status_code == known.status_code == 200
-    assert unknown.json()["message"] == known.json()["message"]
-    assert unknown.json()["dev_reset_token"] is None  # the gate holds
-    assert known.json()["dev_reset_token"] is None
+    assert unknown.json() == known.json()
+    assert len(email_outbox.messages) == 2  # register email + one reset email
 
 
-def test_password_reset_confirm_rotates_password_and_revokes_all_sessions(client):
-    _register_verify_login(client)  # establishes a session in the cookie jar
-    reset = client.post(f"{AUTH}/password-reset", json={"email": "user@example.com"})
-    token = reset.json()["dev_reset_token"]
+def test_password_reset_confirm_rotates_password_and_revokes_all_sessions(
+    client, email_outbox
+):
+    _register_verify_login(client, email_outbox)  # establishes a session
+    client.post(f"{AUTH}/password-reset", json={"email": "user@example.com"})
+    token = _token_from_outbox(email_outbox)  # from the reset email
 
     confirm = client.post(
         f"{AUTH}/password-reset/confirm",

@@ -11,12 +11,12 @@ per endpoint class.
 from fastapi import APIRouter, Depends, Request, Response
 
 from app.api.deps import CsrfGuard, CurrentUser, DbSession
+from app.core.config import settings
 from app.core.cookies import (
     SESSION_COOKIE_NAME,
     clear_session_cookies,
     set_session_cookies,
 )
-from app.core.config import settings
 from app.core.ratelimit import RateLimiter
 from app.schemas import (
     LoginRequest,
