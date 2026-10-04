@@ -96,7 +96,9 @@ def test_window_slides_and_requests_are_allowed_again(client, monkeypatch, fake_
 
     fake_clock.advance(minutes=15, seconds=1)  # the hit slides out of the window
 
-    assert _login(client).status_code == 401  # processed again — NOT 429
+    # Processed again — NOT 429 — and the correct credentials now succeed
+    # (a full 200 proves the request ran the entire auth flow).
+    assert _login(client).status_code == 200
 
 
 def test_retry_after_shrinks_as_the_window_slides(client, monkeypatch, fake_clock):
@@ -121,9 +123,9 @@ def test_limiters_are_independent(client, monkeypatch):
     assert first.status_code == 200
     assert second.status_code == 429  # token bucket exhausted...
 
-    # ...while the login limiter is untouched (403 = unverified email,
-    # meaning the request was PROCESSED, not blocked).
-    assert _login(client).status_code == 403
+    # ...while the login limiter is untouched: login with the still-unverified
+    # account is PROCESSED (403 = business rule evaluated, not 429 = blocked).
+    assert _login(client, email="other@example.com").status_code == 403
 
 
 def test_forwarded_for_is_ignored_when_proxy_not_trusted(client, monkeypatch):
