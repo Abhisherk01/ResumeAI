@@ -1,11 +1,16 @@
 """Auth API schemas: request validation and response shapes.
 
-Password policy (Decision D): minimum 8, maximum 128 characters, NO
+Password policy (Step 4 Decision D): minimum 8, maximum 128 characters, NO
 composition rules. NIST 800-63B recommends length over character-class
 requirements ("P@ssw0rd" satisfies rules but is weak; long passphrases are
 strong). The maximum also bounds Argon2's work — a hostile megabyte-length
 password must never reach the hasher (DoS guard). Step 7's Zod schemas will
 mirror these exact bounds.
+
+Response shapes (Step 6 Decision S6-B): NO tokens in any response body, in
+any environment. Verification and reset links are delivered by email only —
+the register and reset-request responses are a bare message, which makes
+the anti-enumeration property structural rather than gated.
 """
 
 import uuid
@@ -66,14 +71,3 @@ class UserResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
-
-
-class RegisterResponse(MessageResponse):
-    # dev_verification_token is populated ONLY when ENVIRONMENT != "production"
-    # (approved Decision 2): it lets E2E flows complete before the email
-    # provider exists (Step 6 replaces it). In production it is always None.
-    dev_verification_token: str | None = None
-
-
-class PasswordResetResponse(MessageResponse):
-    dev_reset_token: str | None = None  # same dev-only gate as above

@@ -7,11 +7,16 @@ Division of labor:
 - route handlers (Step 4) translate the domain exceptions raised here into
   HTTP responses. No HTTP concepts appear in this module.
 
-Token handling: raw tokens are generated here and returned to the caller —
-Step 4 puts session tokens in cookies, Step 6 puts verification/reset tokens
-in emails. Only SHA-256 hashes are ever persisted (app.core.security).
+Token handling: raw tokens are generated here and delivered by EMAIL
+(Step 6). Only SHA-256 hashes are ever persisted (app.core.security).
+
+Email timing (approved decision S6-A): message objects are built INSIDE the
+transaction (content frozen pre-commit), sent AFTER commit via _safe_send.
+A transport failure is logged, never raised — a registration or reset that
+committed must not be reported as failed because mail was down.
 """
 
+import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -29,6 +34,7 @@ from app.domain.exceptions import (
     InvalidCredentialsError,
     TokenInvalidError,
 )
+from app.infrastructure.email import ConsoleEmailSender, EmailMessage, EmailSender
 from app.repositories.token_repository import (
     EmailVerificationTokenRepository,
     PasswordResetTokenRepository,
@@ -36,15 +42,22 @@ from app.repositories.token_repository import (
 from app.repositories.user_repository import UserRepository
 from app.repositories.user_session_repository import UserSessionRepository
 
+logger = logging.getLogger(__name__)
+
 # Stateless repositories: safe to share one instance per process.
 _user_repo = UserRepository()
 _session_repo = UserSessionRepository()
 _email_tokens = EmailVerificationTokenRepository()
 _reset_tokens = PasswordResetTokenRepository()
 
-# Verified whenever the submitted email is unknown. Running one Argon2
-# verification on the unknown-email path costs the same CPU time as the
-# found-user path, so response latency does not leak which emails are
+# The transport is a module attribute so tests can swap in a recording fake
+# (see conftest's _fake_email_sender fixture). Phase 12 replaces this single
+# line's right-hand side with an SMTP-based sender selection.
+_email_sender: EmailSender = ConsoleEmailSender()
+
+# Verified whenever the submitted email is unknown (see login). Running one
+# Argon2 verification on the unknown-email path costs the same CPU time as
+# the found-user path, so response latency does not leak which emails are
 # registered. The password is meaningless; only the work matters.
 _DUMMY_PASSWORD_HASH = security.hash_password("timing-equalization-only")
 
@@ -55,7 +68,7 @@ class RegisterResult:
 
     `created` is False and `verification_token` is None when the email
     already had a VERIFIED account (silent no-op). `verification_token` is
-    the RAW token — it must go into an email (Step 6), never a response body.
+    the RAW token — it goes into the outgoing email, never a response body.
     """
 
     user: User
@@ -67,8 +80,8 @@ class RegisterResult:
 class LoginResult:
     """Successful login: the user, the new session row, and the RAW tokens.
 
-    Step 4 puts `session_token` in an HttpOnly cookie and `csrf_token` in a
-    JS-readable cookie; both raw values exist only transiently here.
+    The endpoint puts `session_token` in an HttpOnly cookie and `csrf_token`
+    in a JS-readable cookie; both raw values exist only transiently here.
     """
 
     user: User
@@ -98,6 +111,48 @@ def normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
+def _safe_send(message: EmailMessage) -> None:
+    """Send after commit; log-and-continue on transport failure (S6-A)."""
+    try:
+        _email_sender.send(message)
+    except Exception:
+        logger.exception("Failed to send email to %s", message.to)
+
+
+def _build_verification_email(user: User, raw_token: str) -> EmailMessage:
+    link = f"{settings.FRONTEND_BASE_URL}/verify-email?token={raw_token}"
+    return EmailMessage(
+        to=user.email,
+        subject="Verify your ResumeAI email address",
+        body=(
+            f"Hi {user.name},\n\n"
+            "Welcome to ResumeAI! Confirm your email address to activate "
+            "your account:\n\n"
+            f"  {link}\n\n"
+            f"This link is valid for {settings.EMAIL_TOKEN_TTL_HOURS} hours.\n"
+            "If you didn't create a ResumeAI account, you can safely ignore "
+            "this email.\n"
+        ),
+    )
+
+
+def _build_reset_email(user: User, raw_token: str) -> EmailMessage:
+    link = f"{settings.FRONTEND_BASE_URL}/reset-password?token={raw_token}"
+    return EmailMessage(
+        to=user.email,
+        subject="Reset your ResumeAI password",
+        body=(
+            f"Hi {user.name},\n\n"
+            "We received a request to reset your ResumeAI password:\n\n"
+            f"  {link}\n\n"
+            f"This link is valid for {settings.RESET_TOKEN_TTL_MINUTES} minutes "
+            "and can be used once.\n"
+            "If you didn't request a reset, you can safely ignore this email — "
+            "your password is unchanged.\n"
+        ),
+    )
+
+
 def _issue_email_verification_token(db: Session, *, user: User) -> str:
     """Expire the user's outstanding tokens, then issue one fresh raw token."""
     now = utcnow()
@@ -115,14 +170,15 @@ def _issue_email_verification_token(db: Session, *, user: User) -> str:
 def register(db: Session, *, email: str, password: str, name: str) -> RegisterResult:
     """Register a new account — or quietly handle a duplicate.
 
-    All outcomes look identical from the outside (Step 4 returns the same
-    response shape for every branch) so registration can never reveal which
-    email addresses already have accounts:
-    - new email      -> create user + verification token (created=True)
-    - unverified dup -> supersede old links, issue fresh token (created=False)
-    - verified dup   -> do nothing at all (created=False, token=None)
+    All outcomes look identical from the outside (the endpoint returns the
+    same response shape for every branch) so registration can never reveal
+    which email addresses already have accounts:
+    - new email      -> create user + verification token + email (created=True)
+    - unverified dup -> supersede old links, issue fresh token + email
+    - verified dup   -> do nothing at all (created=False, token=None, no email)
     """
     normalized = normalize_email(email)
+    pending_email: EmailMessage | None = None
     with _transaction(db):
         existing = _user_repo.get_by_email(db, email=normalized)
         if existing is not None:
@@ -130,29 +186,40 @@ def register(db: Session, *, email: str, password: str, name: str) -> RegisterRe
                 return RegisterResult(
                     user=existing, created=False, verification_token=None
                 )
-            return RegisterResult(
+            result = RegisterResult(
                 user=existing,
                 created=False,
-                verification_token=_issue_email_verification_token(db, user=existing),
+                verification_token=_issue_email_verification_token(
+                    db, user=existing
+                ),
             )
-        user = _user_repo.create(
-            db,
-            email=normalized,
-            name=name,
-            password_hash=security.hash_password(password),
-        )
-        return RegisterResult(
-            user=user,
-            created=True,
-            verification_token=_issue_email_verification_token(db, user=user),
-        )
+        else:
+            user = _user_repo.create(
+                db,
+                email=normalized,
+                name=name,
+                password_hash=security.hash_password(password),
+            )
+            result = RegisterResult(
+                user=user,
+                created=True,
+                verification_token=_issue_email_verification_token(db, user=user),
+            )
+        if result.verification_token is not None:
+            # Built inside the transaction; sent after it commits (S6-A).
+            pending_email = _build_verification_email(
+                result.user, result.verification_token
+            )
+    if pending_email is not None:
+        _safe_send(pending_email)
+    return result
 
 
 def verify_email(db: Session, *, token: str) -> User:
     """Consume a verification token and mark the account verified.
 
     Unknown, already-used, and expired tokens all raise TokenInvalidError —
-    indistinguishable by design.
+    indistinguishable by design. No email is sent here.
     """
     with _transaction(db):
         record = _email_tokens.consume(
@@ -177,6 +244,7 @@ def login(db: Session, *, email: str, password: str) -> LoginResult:
     - correct credentials but unverified email -> EmailNotVerifiedError, so
       the UI can point at the inbox instead of implying a wrong password;
     - success transparently upgrades weak/legacy hashes (rehash hook).
+    No email is sent by login.
     """
     normalized = normalize_email(email)
     with _transaction(db):
@@ -223,13 +291,16 @@ def logout(db: Session, *, session_token: str) -> bool:
 
 
 def request_password_reset(db: Session, *, email: str) -> str | None:
-    """Start a password reset; return the RAW token for the email (Step 6).
+    """Start a password reset: consume-supersede old tokens, issue a fresh
+    one, and email the reset link (after commit, S6-A).
 
-    Returns None for unknown emails. The CALLER must respond identically in
-    both cases so the endpoint cannot probe for registered accounts. Allowed
-    for never-verified accounts: the emailed token proves inbox control.
+    Returns the RAW token (used by service-level tests). Returns None for
+    unknown emails — and sends nothing — so the endpoint's response is
+    identical either way. Allowed for never-verified accounts: the emailed
+    token proves inbox control.
     """
     normalized = normalize_email(email)
+    pending_email: EmailMessage | None = None
     with _transaction(db):
         user = _user_repo.get_by_email(db, email=normalized)
         if user is None:
@@ -243,7 +314,9 @@ def request_password_reset(db: Session, *, email: str) -> str | None:
             token_hash=security.hash_token(raw),
             expires_at=now + timedelta(minutes=settings.RESET_TOKEN_TTL_MINUTES),
         )
-        return raw
+        pending_email = _build_reset_email(user, raw)
+    _safe_send(pending_email)
+    return raw
 
 
 def reset_password(db: Session, *, token: str, new_password: str) -> None:

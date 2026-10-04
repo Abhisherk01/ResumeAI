@@ -9,9 +9,7 @@ from app.schemas.auth import (
     MessageResponse,
     PasswordResetConfirmRequest,
     PasswordResetRequest,
-    PasswordResetResponse,
     RegisterRequest,
-    RegisterResponse,
     UserResponse,
     VerifyEmailRequest,
 )
@@ -21,9 +19,7 @@ __all__ = [
     "MessageResponse",
     "PasswordResetConfirmRequest",
     "PasswordResetRequest",
-    "PasswordResetResponse",
     "RegisterRequest",
-    "RegisterResponse",
     "UserResponse",
     "VerifyEmailRequest",
 ]

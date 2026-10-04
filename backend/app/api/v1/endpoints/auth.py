@@ -1,30 +1,29 @@
 """Auth endpoints — thin HTTP adapters over the service layer.
 
-Rules honored here: no business logic (services own it), no raw tokens in
-bodies except the dev-gated fields (Step 4 Decision 2), identical success
-responses for every register/reset branch (no account enumeration), and
-errors are raised as domain exceptions translated centrally in
-app/api/errors.py. Rate limiting (Step 5) is applied per endpoint class.
+Rules honored here: no business logic (services own it), NO tokens in
+response bodies in any environment (Step 6 Decision S6-B — links are
+delivered by email), identical success responses for every register/reset
+branch (no account enumeration), and errors are raised as domain exceptions
+translated centrally in app/api/errors.py. Rate limiting (Step 5) is applied
+per endpoint class.
 """
 
 from fastapi import APIRouter, Depends, Request, Response
 
 from app.api.deps import CsrfGuard, CurrentUser, DbSession
-from app.core.config import settings
 from app.core.cookies import (
     SESSION_COOKIE_NAME,
     clear_session_cookies,
     set_session_cookies,
 )
+from app.core.config import settings
 from app.core.ratelimit import RateLimiter
 from app.schemas import (
     LoginRequest,
     MessageResponse,
     PasswordResetConfirmRequest,
     PasswordResetRequest,
-    PasswordResetResponse,
     RegisterRequest,
-    RegisterResponse,
     UserResponse,
     VerifyEmailRequest,
 )
@@ -62,24 +61,21 @@ token_limiter = RateLimiter(
 
 @router.post(
     "/register",
-    response_model=RegisterResponse,
+    response_model=MessageResponse,
     dependencies=[Depends(register_limiter)],  # Step 5
 )
-def register(payload: RegisterRequest, db: DbSession) -> RegisterResponse:
+def register(payload: RegisterRequest, db: DbSession) -> MessageResponse:
     """One identical response for all three outcomes (new / unverified dup /
-    verified dup) — registration can never reveal which emails exist."""
-    result = auth_service.register(
+    verified dup) — registration can never reveal which emails exist. The
+    verification email itself is sent by the service (S6-A, after commit)."""
+    auth_service.register(
         db, email=payload.email, password=payload.password, name=payload.name
     )
-    dev_token = (
-        result.verification_token if settings.ENVIRONMENT != "production" else None
-    )
-    return RegisterResponse(
+    return MessageResponse(
         message=(
             "If this email address can be verified, "
             "a verification link has been sent to it."
-        ),
-        dev_verification_token=dev_token,
+        )
     )
 
 
@@ -125,23 +121,21 @@ def logout(
 
 @router.post(
     "/password-reset",
-    response_model=PasswordResetResponse,
+    response_model=MessageResponse,
     dependencies=[Depends(password_reset_limiter)],  # Step 5
 )
 def request_password_reset(
     payload: PasswordResetRequest, db: DbSession
-) -> PasswordResetResponse:
-    """Identical response whether or not the email has an account. The dev
-    token is None in production (Step 4 Decision 2), making the responses
-    truly indistinguishable there."""
-    token = auth_service.request_password_reset(db, email=payload.email)
-    dev_token = token if settings.ENVIRONMENT != "production" else None
-    return PasswordResetResponse(
+) -> MessageResponse:
+    """Identical response whether or not the email has an account — and no
+    response field can ever distinguish them (S6-B). The reset email itself
+    is sent by the service, only when the account exists (S6-A, after commit)."""
+    auth_service.request_password_reset(db, email=payload.email)
+    return MessageResponse(
         message=(
             "If that email address has an account, "
             "a password reset link has been sent to it."
-        ),
-        dev_reset_token=dev_token,
+        )
     )
 
 

@@ -18,14 +18,16 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "postgresql+psycopg://resumeai:resumeai@db:5432/resumeai"
 
+    # Base URL the frontend is served from — email links point here.
+    # No trailing slash; links are built as f"{FRONTEND_BASE_URL}/route".
+    FRONTEND_BASE_URL: str = "http://localhost:3000"
+
     # --- Sessions & tokens ---
     SESSION_TTL_HOURS: int = 24 * 7        # server-side session lifetime
     EMAIL_TOKEN_TTL_HOURS: int = 24        # email verification links
     RESET_TOKEN_TTL_MINUTES: int = 30      # password reset links (short by design)
 
     # --- Rate limiting (Step 5) ---
-    # Per-identity sliding-window limits for the auth surface. Overridable
-    # via environment variables without code changes.
     LOGIN_RATE_LIMIT_MAX: int = 5
     LOGIN_RATE_LIMIT_WINDOW_MINUTES: int = 15
     REGISTER_RATE_LIMIT_MAX: int = 5
@@ -35,8 +37,7 @@ class Settings(BaseSettings):
     TOKEN_RATE_LIMIT_MAX: int = 10
     TOKEN_RATE_LIMIT_WINDOW_MINUTES: int = 15
     # Enable ONLY when a trusted reverse proxy sets X-Forwarded-For
-    # (production deploy behind Render/Railway, Phase 12). Off in dev/tests
-    # so the header cannot be used to forge identities.
+    # (production deploy behind Render/Railway, Phase 12).
     TRUST_PROXY_HEADERS: bool = False
 
     @property
