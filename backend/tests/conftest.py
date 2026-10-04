@@ -9,8 +9,18 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.core.ratelimit import reset_all_limiters
 from app.db.session import Base, SessionLocal, engine
 from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiters():
+    """Rate limiters are process-wide singletons; without a reset, one
+    test's hit counts would leak into the next (and the suite would trip
+    real limits — many tests call /login repeatedly)."""
+    reset_all_limiters()
+    yield
 
 
 @pytest.fixture()

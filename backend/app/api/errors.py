@@ -28,6 +28,7 @@ from app.domain.exceptions import (
     EmailNotVerifiedError,
     InvalidCredentialsError,
     NotAuthenticatedError,
+    RateLimitExceededError,
     TokenInvalidError,
 )
 
@@ -61,6 +62,11 @@ _DOMAIN_ERROR_MAP: dict[type[DomainError], tuple[int, str, str]] = {
         "csrf_failed",
         "Request failed CSRF verification.",
     ),
+    RateLimitExceededError: (
+        429,
+        "rate_limited",
+        "Too many requests. Please try again later.",
+    ),
 }
 
 
@@ -81,9 +87,15 @@ def register_error_handlers(application: FastAPI) -> None:
                 "internal_error",
                 "An unexpected error occurred.",
             )
+        # The limiter knows exactly when its window frees up; surface that
+        # as Retry-After so well-behaved clients can back off precisely.
+        headers: dict[str, str] | None = None
+        if isinstance(exc, RateLimitExceededError):
+            headers = {"Retry-After": str(exc.retry_after_seconds)}
         return JSONResponse(
             status_code=status_code,
             content={"error": {"code": code, "message": message}},
+            headers=headers,
         )
 
     @application.exception_handler(StarletteHTTPException)

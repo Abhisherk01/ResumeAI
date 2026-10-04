@@ -6,8 +6,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.errors import register_error_handlers  # ADDED in Step 4
+from app.api.errors import register_error_handlers
 from app.api.health import router as health_router
+from app.api.middleware import SecurityHeadersMiddleware  # ADDED in Step 5
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import configure_logging
@@ -31,7 +32,12 @@ def create_application() -> FastAPI:
         allow_headers=["Content-Type", "X-CSRF-Token"],
     )
 
-    # ADDED in Step 4: domain + framework errors -> the error envelope.
+    # ADDED in Step 5. Registered AFTER CORS on purpose: Starlette runs the
+    # LAST-registered middleware first (outermost), so security headers wrap
+    # every response — including CORS short-circuits and error-handler bodies.
+    application.add_middleware(SecurityHeadersMiddleware)
+
+    # Step 4: domain + framework errors -> the error envelope.
     register_error_handlers(application)
 
     application.include_router(health_router)

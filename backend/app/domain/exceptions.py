@@ -47,3 +47,16 @@ class CsrfVerificationError(DomainError):
     """A mutating request failed double-submit CSRF verification — the
     X-CSRF-Token header was missing or did not match the session's stored
     CSRF hash."""
+
+
+class RateLimitExceededError(DomainError):
+    """Too many requests from one identity within a limiter's window.
+
+    Unlike the other domain errors this one carries data: the number of
+    seconds until the oldest hit leaves the window, surfaced as the
+    Retry-After header by the error handler (app/api/errors.py).
+    """
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__("Rate limit exceeded for this endpoint.")
+        self.retry_after_seconds = retry_after_seconds
