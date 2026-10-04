@@ -4,7 +4,7 @@ Services raise these; route handlers (Step 4) translate them into HTTP
 responses. Deliberately no HTTP concepts here (no status codes, no detail
 dicts): keeping this module pure is what lets the service layer be
 unit-tested without FastAPI, and what forces an explicit, reviewed mapping
-from every domain error to exactly one API error code.
+from every domain error to exactly one API error code (app/api/errors.py).
 """
 
 
@@ -35,3 +35,15 @@ class TokenInvalidError(DomainError):
     Callers cannot distinguish the cases, and neither can anyone replaying
     old links, so a leaked-but-used token is as useless as a forged one.
     """
+
+
+class NotAuthenticatedError(DomainError):
+    """No valid session: missing cookie, unknown token, revoked or expired
+    session, or a deactivated user. One error for all of these, so probing
+    requests learn nothing about which check failed."""
+
+
+class CsrfVerificationError(DomainError):
+    """A mutating request failed double-submit CSRF verification — the
+    X-CSRF-Token header was missing or did not match the session's stored
+    CSRF hash."""

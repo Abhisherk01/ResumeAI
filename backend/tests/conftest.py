@@ -14,7 +14,9 @@ from app.main import app
 
 
 @pytest.fixture()
-def client() -> TestClient:
+def client(db: Session) -> TestClient:
+    """HTTP test client. Depends on `db` so the schema exists before any
+    request runs — endpoints need real tables (Step 4 amendment)."""
     return TestClient(app)
 
 

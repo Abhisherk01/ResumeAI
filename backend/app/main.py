@@ -6,6 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.errors import register_error_handlers  # ADDED in Step 4
 from app.api.health import router as health_router
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -29,6 +30,9 @@ def create_application() -> FastAPI:
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "X-CSRF-Token"],
     )
+
+    # ADDED in Step 4: domain + framework errors -> the error envelope.
+    register_error_handlers(application)
 
     application.include_router(health_router)
     application.include_router(api_router, prefix=settings.API_V1_PREFIX)
