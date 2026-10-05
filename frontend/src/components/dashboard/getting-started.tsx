@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { CheckCircle2, Circle, Upload } from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
