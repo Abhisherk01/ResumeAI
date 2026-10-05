@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.errors import register_error_handlers
 from app.api.health import router as health_router
-from app.api.middleware import SecurityHeadersMiddleware  # ADDED in Step 5
+from app.api.middleware import SecurityHeadersMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import configure_logging
@@ -30,14 +30,20 @@ def create_application() -> FastAPI:
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "X-CSRF-Token"],
+        # Step 8: browsers hide non-safelisted response headers from
+        # cross-origin JavaScript unless the server exposes them. Without
+        # this, the frontend can never read Retry-After on a 429 and shows
+        # a generic wait message instead of the precise countdown. Found in
+        # real-browser E2E; invisible to TestClient tests (no CORS there).
+        expose_headers=["Retry-After"],
     )
 
-    # ADDED in Step 5. Registered AFTER CORS on purpose: Starlette runs the
-    # LAST-registered middleware first (outermost), so security headers wrap
-    # every response — including CORS short-circuits and error-handler bodies.
+    # Registered AFTER CORS: Starlette runs the LAST-registered middleware
+    # first (outermost), so security headers wrap every response — including
+    # CORS short-circuits and error-handler bodies.
     application.add_middleware(SecurityHeadersMiddleware)
 
-    # Step 4: domain + framework errors -> the error envelope.
+    # Domain + framework errors -> the error envelope.
     register_error_handlers(application)
 
     application.include_router(health_router)
