@@ -104,3 +104,4 @@ def require_csrf(
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
 CsrfGuard = Annotated[None, Depends(require_csrf)]
+AuthContextDep = Annotated[AuthContext, Depends(get_auth_context)]

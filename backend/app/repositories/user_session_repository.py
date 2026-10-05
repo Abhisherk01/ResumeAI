@@ -12,9 +12,9 @@ from app.db.models.user_session import UserSession
 class UserSessionRepository:
     """Create, look up, and revoke sessions. Never commits.
 
-    Note for Step 4: bulk UPDATE statements bypass SQLAlchemy's identity
+    Note for callers: bulk UPDATE statements bypass SQLAlchemy's identity
     map, so after calling a revoke method, re-read rows only after
-    session.expire_all() (or don't re-read at all — the services here don't).
+    session.expire_all() (or don't re-read at all — the services don't).
     """
 
     def create(
@@ -41,7 +41,7 @@ class UserSessionRepository:
     def get_by_token_hash(self, db: Session, *, token_hash: str) -> UserSession | None:
         """Look up by hash. Does NOT filter on expiry/revocation — deciding
         whether a session is still valid is business logic, so it belongs to
-        the service layer (Step 4's get_current_user)."""
+        the service/dependency layer."""
         stmt = select(UserSession).where(UserSession.token_hash == token_hash)
         return db.scalars(stmt).first()
 
@@ -71,6 +71,29 @@ class UserSessionRepository:
         stmt = (
             update(UserSession)
             .where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
+            .values(revoked_at=now)
+        )
+        return db.execute(stmt).rowcount
+
+    def revoke_all_for_user_except(
+        self,
+        db: Session,
+        *,
+        user_id: uuid.UUID,
+        except_token_hash: str,
+        now: datetime,
+    ) -> int:
+        """Revoke every live session for a user EXCEPT the one holding
+        `except_token_hash` (Phase 4, P4-3: the session performing a
+        password change must survive it; every other device logs out).
+        Returns how many were revoked."""
+        stmt = (
+            update(UserSession)
+            .where(
+                UserSession.user_id == user_id,
+                UserSession.revoked_at.is_(None),
+                UserSession.token_hash != except_token_hash,
+            )
             .values(revoked_at=now)
         )
         return db.execute(stmt).rowcount

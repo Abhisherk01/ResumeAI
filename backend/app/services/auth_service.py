@@ -1,14 +1,15 @@
-"""Authentication orchestration — the only home of auth business rules.
+"""Authentication and account orchestration — the only home of these
+business rules.
 
 Division of labor:
 - repositories (app.repositories) own queries and writes, never commit;
 - THIS module owns rules and transactions: every public function wraps
   exactly one transaction (commit on success, rollback on any failure);
-- route handlers (Step 4) translate the domain exceptions raised here into
-  HTTP responses. No HTTP concepts appear in this module.
+- route handlers translate the domain exceptions raised here into HTTP
+  responses. No HTTP concepts appear in this module.
 
 Token handling: raw tokens are generated here and delivered by EMAIL
-(Step 6). Only SHA-256 hashes are ever persisted (app.core.security).
+(Phase 3 Step 6). Only SHA-256 hashes are ever persisted (app.core.security).
 
 Email timing (approved decision S6-A): message objects are built INSIDE the
 transaction (content frozen pre-commit), sent AFTER commit via _safe_send.
@@ -17,6 +18,7 @@ committed must not be reported as failed because mail was down.
 """
 
 import logging
+import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -32,6 +34,8 @@ from app.db.models.user_session import UserSession
 from app.domain.exceptions import (
     EmailNotVerifiedError,
     InvalidCredentialsError,
+    InvalidCurrentPasswordError,
+    NotAuthenticatedError,
     TokenInvalidError,
 )
 from app.infrastructure.email import ConsoleEmailSender, EmailMessage, EmailSender
@@ -337,3 +341,52 @@ def reset_password(db: Session, *, token: str, new_password: str) -> None:
             raise TokenInvalidError
         user.password_hash = security.hash_password(new_password)
         _session_repo.revoke_all_for_user(db, user_id=user.id, now=utcnow())
+
+
+def update_profile(db: Session, *, user_id: uuid.UUID, name: str) -> User:
+    """Update the display name of an authenticated user (Phase 4).
+
+    The schema layer has already trimmed and length-checked the name; this
+    function owns the transaction and the ownership scope (user_id — the
+    caller can only ever change their own row).
+    """
+    with _transaction(db):
+        user = _user_repo.get_by_id(db, user_id=user_id)
+        if user is None:  # defensive: unreachable via the API dependency
+            raise NotAuthenticatedError
+        user.name = name
+        return user
+
+
+def change_password(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    current_password: str,
+    new_password: str,
+    except_session_token_hash: str,
+) -> None:
+    """Change an authenticated user's password (Phase 4, P4-3/P4-5).
+
+    - Wrong current password -> InvalidCurrentPasswordError; nothing changes.
+    - On success, revokes every OTHER live session but keeps the one
+      performing the change (killing the user's own session after a
+      successful change is hostile UX; every other device still logs out,
+      so the security property holds). This is the difference from
+      reset_password, which revokes everything because its caller is
+      anonymous.
+    - No email is sent (S6-C declined in Phase 3; candidate for Phase 10).
+    """
+    with _transaction(db):
+        user = _user_repo.get_by_id(db, user_id=user_id)
+        if user is None:  # defensive: unreachable via the API dependency
+            raise NotAuthenticatedError
+        if not security.verify_password(current_password, user.password_hash):
+            raise InvalidCurrentPasswordError
+        user.password_hash = security.hash_password(new_password)
+        _session_repo.revoke_all_for_user_except(
+            db,
+            user_id=user.id,
+            except_token_hash=except_session_token_hash,
+            now=utcnow(),
+        )

@@ -27,6 +27,7 @@ from app.domain.exceptions import (
     DomainError,
     EmailNotVerifiedError,
     InvalidCredentialsError,
+    InvalidCurrentPasswordError,
     NotAuthenticatedError,
     RateLimitExceededError,
     TokenInvalidError,
@@ -35,12 +36,17 @@ from app.domain.exceptions import (
 logger = logging.getLogger(__name__)
 
 # exception type -> (HTTP status, envelope code, generic public message)
-# Keep messages stable: the frontend (Step 7) matches on `code`, not text.
+# Keep messages stable: the frontend matches on `code`, not text.
 _DOMAIN_ERROR_MAP: dict[type[DomainError], tuple[int, str, str]] = {
     InvalidCredentialsError: (
         401,
         "invalid_credentials",
         "Invalid email or password.",
+    ),
+    InvalidCurrentPasswordError: (
+        400,
+        "invalid_current_password",
+        "Current password is incorrect.",
     ),
     EmailNotVerifiedError: (
         403,

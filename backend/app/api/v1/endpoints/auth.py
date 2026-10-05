@@ -1,16 +1,18 @@
-"""Auth endpoints — thin HTTP adapters over the service layer.
+"""Auth and account endpoints — thin HTTP adapters over the service layer.
 
 Rules honored here: no business logic (services own it), NO tokens in
-response bodies in any environment (Step 6 Decision S6-B — links are
+response bodies in any environment (Phase 3 Decision S6-B — links are
 delivered by email), identical success responses for every register/reset
 branch (no account enumeration), and errors are raised as domain exceptions
-translated centrally in app/api/errors.py. Rate limiting (Step 5) is applied
-per endpoint class.
+translated centrally in app/api/errors.py. Rate limiting (Phase 3 Step 5)
+is applied per endpoint group; the authenticated account endpoints (PATCH
+/me, POST /me/password) rely on session + CSRF + current-password checks —
+per-endpoint limits for them are a Phase 10 hardening candidate.
 """
 
 from fastapi import APIRouter, Depends, Request, Response
 
-from app.api.deps import CsrfGuard, CurrentUser, DbSession
+from app.api.deps import AuthContextDep, CsrfGuard, CurrentUser, DbSession
 from app.core.config import settings
 from app.core.cookies import (
     SESSION_COOKIE_NAME,
@@ -19,11 +21,13 @@ from app.core.cookies import (
 )
 from app.core.ratelimit import RateLimiter
 from app.schemas import (
+    ChangePasswordRequest,
     LoginRequest,
     MessageResponse,
     PasswordResetConfirmRequest,
     PasswordResetRequest,
     RegisterRequest,
+    UpdateProfileRequest,
     UserResponse,
     VerifyEmailRequest,
 )
@@ -31,7 +35,7 @@ from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-# --- Rate limiters (Step 5) ---------------------------------------------------
+# --- Rate limiters (Phase 3 Step 5) --------------------------------------------
 # Module-level single instances: each wraps an in-memory window store and is
 # safe to share per process. Tests reset them between tests via conftest.
 # verify-email and reset confirm share one "token" bucket: both are token
@@ -62,7 +66,7 @@ token_limiter = RateLimiter(
 @router.post(
     "/register",
     response_model=MessageResponse,
-    dependencies=[Depends(register_limiter)],  # Step 5
+    dependencies=[Depends(register_limiter)],
 )
 def register(payload: RegisterRequest, db: DbSession) -> MessageResponse:
     """One identical response for all three outcomes (new / unverified dup /
@@ -82,7 +86,7 @@ def register(payload: RegisterRequest, db: DbSession) -> MessageResponse:
 @router.post(
     "/verify-email",
     response_model=MessageResponse,
-    dependencies=[Depends(token_limiter)],  # Step 5
+    dependencies=[Depends(token_limiter)],
 )
 def verify_email(payload: VerifyEmailRequest, db: DbSession) -> MessageResponse:
     auth_service.verify_email(db, token=payload.token)
@@ -92,7 +96,7 @@ def verify_email(payload: VerifyEmailRequest, db: DbSession) -> MessageResponse:
 @router.post(
     "/login",
     response_model=UserResponse,
-    dependencies=[Depends(login_limiter)],  # Step 5
+    dependencies=[Depends(login_limiter)],
 )
 def login(payload: LoginRequest, db: DbSession, response: Response) -> UserResponse:
     result = auth_service.login(db, email=payload.email, password=payload.password)
@@ -111,8 +115,8 @@ def logout(
     _csrf: CsrfGuard,  # then 403 unless the header matches
 ) -> None:
     """Revoke the session and clear both cookies. CSRF-protected because it
-    is a session-authenticated mutation (Step 4 Decision 1). Not rate-limited:
-    it requires a live session plus a CSRF match, so there is little to flood."""
+    is a session-authenticated mutation. Not rate-limited: it requires a
+    live session plus a CSRF match, so there is little to flood."""
     raw_token = request.cookies.get(SESSION_COOKIE_NAME)
     if raw_token:  # CurrentUser already proved it existed; defensive anyway
         auth_service.logout(db, session_token=raw_token)
@@ -122,7 +126,7 @@ def logout(
 @router.post(
     "/password-reset",
     response_model=MessageResponse,
-    dependencies=[Depends(password_reset_limiter)],  # Step 5
+    dependencies=[Depends(password_reset_limiter)],
 )
 def request_password_reset(
     payload: PasswordResetRequest, db: DbSession
@@ -142,7 +146,7 @@ def request_password_reset(
 @router.post(
     "/password-reset/confirm",
     response_model=MessageResponse,
-    dependencies=[Depends(token_limiter)],  # Step 5 — shared with verify-email
+    dependencies=[Depends(token_limiter)],
 )
 def confirm_password_reset(
     payload: PasswordResetConfirmRequest, db: DbSession
@@ -158,3 +162,37 @@ def confirm_password_reset(
 @router.get("/me", response_model=UserResponse)
 def me(user: CurrentUser) -> UserResponse:
     return UserResponse.model_validate(user)
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_me(
+    payload: UpdateProfileRequest,
+    db: DbSession,
+    user: CurrentUser,
+    _csrf: CsrfGuard,  # mutating + session-authenticated -> CSRF required
+) -> UserResponse:
+    """Update the signed-in user's display name (Phase 4). Ownership is
+    structural: the user_id comes from the session, never from the payload."""
+    updated = auth_service.update_profile(db, user_id=user.id, name=payload.name)
+    return UserResponse.model_validate(updated)
+
+
+@router.post("/me/password", response_model=MessageResponse)
+def change_password(
+    payload: ChangePasswordRequest,
+    db: DbSession,
+    context: AuthContextDep,
+    _csrf: CsrfGuard,
+) -> MessageResponse:
+    """Change the signed-in user's password (Phase 4, P4-3): requires the
+    current password, revokes every OTHER session, keeps this one. The
+    current session's token hash comes from the resolved AuthContext —
+    never from client input."""
+    auth_service.change_password(
+        db,
+        user_id=context.user.id,
+        current_password=payload.current_password,
+        new_password=payload.new_password,
+        except_session_token_hash=context.session.token_hash,
+    )
+    return MessageResponse(message="Password updated. Other sessions were signed out.")

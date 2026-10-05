@@ -5,21 +5,25 @@ Import from here at call sites: `from app.schemas import RegisterRequest`.
 """
 
 from app.schemas.auth import (
+    ChangePasswordRequest,
     LoginRequest,
     MessageResponse,
     PasswordResetConfirmRequest,
     PasswordResetRequest,
     RegisterRequest,
+    UpdateProfileRequest,
     UserResponse,
     VerifyEmailRequest,
 )
 
 __all__ = [
+    "ChangePasswordRequest",
     "LoginRequest",
     "MessageResponse",
     "PasswordResetConfirmRequest",
     "PasswordResetRequest",
     "RegisterRequest",
+    "UpdateProfileRequest",
     "UserResponse",
     "VerifyEmailRequest",
 ]

@@ -1,16 +1,14 @@
-"""Auth API schemas: request validation and response shapes.
+"""Auth and account API schemas: request validation and response shapes.
 
-Password policy (Step 4 Decision D): minimum 8, maximum 128 characters, NO
+Password policy (Decision D): minimum 8, maximum 128 characters, NO
 composition rules. NIST 800-63B recommends length over character-class
 requirements ("P@ssw0rd" satisfies rules but is weak; long passphrases are
 strong). The maximum also bounds Argon2's work — a hostile megabyte-length
-password must never reach the hasher (DoS guard). Step 7's Zod schemas will
-mirror these exact bounds.
+password must never reach the hasher (DoS guard). The frontend's Zod
+schemas mirror these exact bounds.
 
 Response shapes (Step 6 Decision S6-B): NO tokens in any response body, in
-any environment. Verification and reset links are delivered by email only —
-the register and reset-request responses are a bare message, which makes
-the anti-enumeration property structural rather than gated.
+any environment. Verification and reset links are delivered by email only.
 """
 
 import uuid
@@ -32,6 +30,32 @@ class RegisterRequest(BaseModel):
         if not trimmed:
             raise ValueError("name must not be blank")
         return trimmed
+
+
+class UpdateProfileRequest(BaseModel):
+    """Phase 4: the only editable profile field is the display name.
+    Email change is a deliberate deferral — it requires verifying the NEW
+    address before swapping, a flow of its own (Phase 10 candidate)."""
+
+    name: str = Field(min_length=1, max_length=100)
+
+    @field_validator("name")
+    @classmethod
+    def reject_blank_name(cls, value: str) -> str:
+        trimmed = value.strip()
+        if not trimmed:
+            raise ValueError("name must not be blank")
+        return trimmed
+
+
+class ChangePasswordRequest(BaseModel):
+    """Phase 4 (P4-3/P4-5): an authenticated password change. The current
+    password is required (proof of ownership); the new one follows the
+    registration policy. Distinct from the reset flow, which proves
+    ownership via a single-use emailed token instead."""
+
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)  # Decision D
 
 
 class LoginRequest(BaseModel):

@@ -1,6 +1,6 @@
 """Domain exceptions — the vocabulary of business-rule failures.
 
-Services raise these; route handlers (Step 4) translate them into HTTP
+Services raise these; route handlers translate them into HTTP
 responses. Deliberately no HTTP concepts here (no status codes, no detail
 dicts): keeping this module pure is what lets the service layer be
 unit-tested without FastAPI, and what forces an explicit, reviewed mapping
@@ -60,3 +60,11 @@ class RateLimitExceededError(DomainError):
     def __init__(self, retry_after_seconds: int) -> None:
         super().__init__("Rate limit exceeded for this endpoint.")
         self.retry_after_seconds = retry_after_seconds
+
+
+class InvalidCurrentPasswordError(DomainError):
+    """An authenticated user submitted the wrong current password when
+    changing it. Deliberately distinct from InvalidCredentialsError: the
+    caller is already authenticated, so 401 would be semantically wrong,
+    and the frontend needs to show this error inline on the current-
+    password field rather than as a global failure."""
