@@ -10,10 +10,11 @@ Test-fixing strategy (no new dependencies, no binary fixtures):
 
 import io
 
-import pytest
 from docx import Document as DocxDocument
 from fastapi.testclient import TestClient
 from httpx import Response
+
+import pytest
 
 from app.domain.exceptions import (
     DocumentParseError,
@@ -27,6 +28,7 @@ RESUMES = "/api/v1/resumes"
 PASSWORD = "correct-horse-battery"
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
 def _error_code(response: Response) -> str:
     body = response.json()
     assert set(body) == {"error"}, f"expected error envelope, got: {body}"
