@@ -24,13 +24,18 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.domain.exceptions import (
     CsrfVerificationError,
+    DocumentParseError,
     DomainError,
     EmailNotVerifiedError,
+    EmptyDocumentError,
+    FileTooLargeError,
     InvalidCredentialsError,
     InvalidCurrentPasswordError,
     NotAuthenticatedError,
     RateLimitExceededError,
+    ResumeNotFoundError,
     TokenInvalidError,
+    UnsupportedFileTypeError,
 )
 
 logger = logging.getLogger(__name__)
@@ -72,6 +77,31 @@ _DOMAIN_ERROR_MAP: dict[type[DomainError], tuple[int, str, str]] = {
         429,
         "rate_limited",
         "Too many requests. Please try again later.",
+    ),
+    UnsupportedFileTypeError: (
+        415,
+        "unsupported_file_type",
+        "Only PDF and DOCX files are supported.",
+    ),
+    FileTooLargeError: (
+        413,
+        "file_too_large",
+        "The uploaded file is too large. Maximum size is 5 MB.",
+    ),
+    DocumentParseError: (
+        422,
+        "document_parse_failed",
+        "We could not read this file. It may be corrupt or password-protected.",
+    ),
+    EmptyDocumentError: (
+        422,
+        "empty_document",
+        "No text could be extracted. Scanned (image-only) PDFs are not supported.",
+    ),
+    ResumeNotFoundError: (
+        404,
+        "resume_not_found",
+        "Resume not found.",
     ),
 }
 

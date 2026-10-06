@@ -68,3 +68,32 @@ class InvalidCurrentPasswordError(DomainError):
     caller is already authenticated, so 401 would be semantically wrong,
     and the frontend needs to show this error inline on the current-
     password field rather than as a global failure."""
+
+
+class UnsupportedFileTypeError(DomainError):
+    """The uploaded file is neither a PDF nor a DOCX by MAGIC BYTES.
+    Extensions and browser MIME headers are never trusted (both are
+    trivially forged) — the first bytes of the file decide."""
+
+
+class FileTooLargeError(DomainError):
+    """The uploaded file exceeds MAX_RESUME_SIZE_BYTES. Checked before any
+    parsing work: rejecting is one integer comparison."""
+
+
+class DocumentParseError(DomainError):
+    """The file has valid magic bytes but could not be parsed — corrupt,
+    truncated, or encrypted. Every library exception is converted to this
+    at the parsing boundary, so upload content can never produce a 500."""
+
+
+class EmptyDocumentError(DomainError):
+    """The file parsed successfully but contained no extractable text —
+    typically a scanned, image-only PDF. OCR is a future concern; a clear
+    error beats storing a useless row."""
+
+
+class ResumeNotFoundError(DomainError):
+    """No resume with this id belongs to this user. A foreign id and a
+    missing id are deliberately indistinguishable (both become 404) so a
+    probing request cannot discover which resume ids exist."""

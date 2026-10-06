@@ -15,6 +15,7 @@ from app.schemas.auth import (
     UserResponse,
     VerifyEmailRequest,
 )
+from app.schemas.resume import ResumeDetailResponse, ResumeResponse
 
 __all__ = [
     "ChangePasswordRequest",
@@ -23,6 +24,8 @@ __all__ = [
     "PasswordResetConfirmRequest",
     "PasswordResetRequest",
     "RegisterRequest",
+    "ResumeDetailResponse",
+    "ResumeResponse",
     "UpdateProfileRequest",
     "UserResponse",
     "VerifyEmailRequest",

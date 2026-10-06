@@ -27,7 +27,13 @@ class Settings(BaseSettings):
     EMAIL_TOKEN_TTL_HOURS: int = 24        # email verification links
     RESET_TOKEN_TTL_MINUTES: int = 30      # password reset links (short by design)
 
-    # --- Rate limiting (Step 5) ---
+    # --- Resume uploads (Phase 5, P5-3) ---
+    # Hard cap on uploaded file size. Enforced BEFORE parsing: the endpoint
+    # reads at most one byte past this, so a hostile upload cannot balloon
+    # memory, and oversized files are rejected before any parsing work.
+    MAX_RESUME_SIZE_BYTES: int = 5 * 1024 * 1024  # 5 MB
+
+    # --- Rate limiting (Phase 3 Step 5) ---
     LOGIN_RATE_LIMIT_MAX: int = 5
     LOGIN_RATE_LIMIT_WINDOW_MINUTES: int = 15
     REGISTER_RATE_LIMIT_MAX: int = 5

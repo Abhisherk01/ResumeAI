@@ -5,6 +5,7 @@ layer owns transactions. Import from here, not from submodules, at call
 sites: `from app.repositories import UserRepository`.
 """
 
+from app.repositories.resume_repository import ResumeRepository
 from app.repositories.token_repository import (
     EmailVerificationTokenRepository,
     PasswordResetTokenRepository,
@@ -15,6 +16,7 @@ from app.repositories.user_session_repository import UserSessionRepository
 __all__ = [
     "EmailVerificationTokenRepository",
     "PasswordResetTokenRepository",
+    "ResumeRepository",
     "UserRepository",
     "UserSessionRepository",
 ]
