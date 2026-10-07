@@ -28,10 +28,13 @@ class Settings(BaseSettings):
     RESET_TOKEN_TTL_MINUTES: int = 30      # password reset links (short by design)
 
     # --- Resume uploads (Phase 5, P5-3) ---
-    # Hard cap on uploaded file size. Enforced BEFORE parsing: the endpoint
-    # reads at most one byte past this, so a hostile upload cannot balloon
-    # memory, and oversized files are rejected before any parsing work.
     MAX_RESUME_SIZE_BYTES: int = 5 * 1024 * 1024  # 5 MB
+
+    # --- AI analysis (Phase 6, P6-1) ---
+    # "mock" = deterministic rule-based suggestions, zero network (default,
+    # and the ONLY provider tests ever use — conftest enforces it). "gemini"
+    # lands in Phase 6 Step 3 behind the same AnalysisProvider protocol.
+    AI_PROVIDER: str = "mock"
 
     # --- Rate limiting (Phase 3 Step 5) ---
     LOGIN_RATE_LIMIT_MAX: int = 5
@@ -42,6 +45,8 @@ class Settings(BaseSettings):
     PASSWORD_RESET_RATE_LIMIT_WINDOW_MINUTES: int = 60
     TOKEN_RATE_LIMIT_MAX: int = 10
     TOKEN_RATE_LIMIT_WINDOW_MINUTES: int = 15
+    ANALYZE_RATE_LIMIT_MAX: int = 10
+    ANALYZE_RATE_LIMIT_WINDOW_MINUTES: int = 60
     # Enable ONLY when a trusted reverse proxy sets X-Forwarded-For
     # (production deploy behind Render/Railway, Phase 12).
     TRUST_PROXY_HEADERS: bool = False

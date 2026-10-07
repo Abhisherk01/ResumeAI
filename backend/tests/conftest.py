@@ -11,9 +11,10 @@ from sqlalchemy.orm import Session
 
 from app.core.ratelimit import reset_all_limiters
 from app.db.session import Base, SessionLocal, engine
+from app.infrastructure.ai import MockAnalysisProvider
 from app.infrastructure.email import EmailMessage
 from app.main import app
-from app.services import auth_service
+from app.services import analysis_service, auth_service
 
 
 class FakeEmailSender:
@@ -45,6 +46,14 @@ def _fake_email_sender(
 def email_outbox(_fake_email_sender: FakeEmailSender) -> FakeEmailSender:
     """Read access to what the service 'sent' during the current test."""
     return _fake_email_sender
+
+
+@pytest.fixture(autouse=True)
+def _force_mock_ai(monkeypatch: pytest.MonkeyPatch) -> None:
+    """THE LOCKED RULE, ENFORCED: the mock AI provider runs in ALL tests —
+    even if AI_PROVIDER=gemini ever leaks in via .env. No test, ever, may
+    touch the network for analysis."""
+    monkeypatch.setattr(analysis_service, "_provider", MockAnalysisProvider())
 
 
 @pytest.fixture(autouse=True)

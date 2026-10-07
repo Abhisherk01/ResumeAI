@@ -4,6 +4,7 @@ Services speak in ORM models and dataclasses; HTTP speaks in these schemas.
 Import from here at call sites: `from app.schemas import RegisterRequest`.
 """
 
+from app.schemas.analysis import AnalysisResponse
 from app.schemas.auth import (
     ChangePasswordRequest,
     LoginRequest,
@@ -18,6 +19,7 @@ from app.schemas.auth import (
 from app.schemas.resume import ResumeDetailResponse, ResumeResponse
 
 __all__ = [
+    "AnalysisResponse",
     "ChangePasswordRequest",
     "LoginRequest",
     "MessageResponse",

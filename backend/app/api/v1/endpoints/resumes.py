@@ -1,4 +1,4 @@
-"""Resume endpoints (Phase 5) — thin HTTP adapters over resume_service.
+"""Resume and analysis endpoints (Phases 5-6) — thin HTTP adapters.
 
 Upload notes:
 - The endpoint is sync and reads via file.file (the spooled file object),
@@ -8,22 +8,34 @@ Upload notes:
   lives in the database), but a clean name costs nothing.
 - Ownership comes from the session (CurrentUser), NEVER from client input.
   Foreign ids 404, never 403 — the IDOR posture from the repository layer.
-- No rate limiter yet: session + CSRF gate these routes; per-user upload
-  limits are a Phase 10 hardening candidate.
+- Analysis (Phase 6) is rate-limited: each call runs an AI provider, and
+  the limiter protects provider quota the day Gemini is enabled.
 """
 
 import os
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, Depends, File, UploadFile
 
 from app.api.deps import CsrfGuard, CurrentUser, DbSession
 from app.core.config import settings
-from app.schemas import ResumeDetailResponse, ResumeResponse
-from app.services import resume_service
+from app.core.ratelimit import RateLimiter
+from app.schemas import (
+    AnalysisResponse,
+    ResumeDetailResponse,
+    ResumeResponse,
+)
+from app.services import analysis_service, resume_service
 
 router = APIRouter(prefix="/resumes", tags=["Resumes"])
+
+# Phase 6 (P6-5): one analysis = one provider call. Sliding window, per IP.
+analyze_limiter = RateLimiter(
+    name="analyze",
+    limit=settings.ANALYZE_RATE_LIMIT_MAX,
+    window_seconds=settings.ANALYZE_RATE_LIMIT_WINDOW_MINUTES * 60,
+)
 
 
 @router.post("", response_model=ResumeResponse, status_code=201)
@@ -68,3 +80,33 @@ def delete_resume(
     resume_id: uuid.UUID,
 ) -> None:
     resume_service.delete_resume(db, user_id=user.id, resume_id=resume_id)
+
+
+@router.post(
+    "/{resume_id}/analyze",
+    response_model=AnalysisResponse,
+    dependencies=[Depends(analyze_limiter)],
+)
+def analyze_resume(
+    db: DbSession,
+    user: CurrentUser,
+    _csrf: CsrfGuard,  # mutating -> CSRF required
+    resume_id: uuid.UUID,
+) -> AnalysisResponse:
+    """Score one of THIS user's resumes and store an immutable analysis.
+    Foreign or missing resume -> 404; no extractable text -> 422."""
+    analysis = analysis_service.analyze_resume(
+        db, user_id=user.id, resume_id=resume_id
+    )
+    return AnalysisResponse.model_validate(analysis)
+
+
+@router.get("/{resume_id}/analyses", response_model=list[AnalysisResponse])
+def list_analyses(
+    db: DbSession, user: CurrentUser, resume_id: uuid.UUID
+) -> list[AnalysisResponse]:
+    """Newest-first analyses of one resume. GET is read-only: no CSRF."""
+    analyses = analysis_service.list_analyses(
+        db, user_id=user.id, resume_id=resume_id
+    )
+    return [AnalysisResponse.model_validate(analysis) for analysis in analyses]
