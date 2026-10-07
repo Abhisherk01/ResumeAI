@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     DateTime,
@@ -10,9 +11,12 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
+
+if TYPE_CHECKING:
+    from app.db.models.analysis import Analysis  # ADDED in Phase 6
 
 
 class Resume(Base):
@@ -50,6 +54,11 @@ class Resume(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+    # ADDED in Phase 6: deleting a Resume removes its analyses in the same
+    # transaction (the ORM cascade SQLite tests exercise; the DB-level
+    # ON DELETE CASCADE on analyses.resume_id is the Postgres safety net).
+    analyses: Mapped[list["Analysis"]] = relationship(cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Resume id={self.id} filename={self.filename!r} user_id={self.user_id}>"

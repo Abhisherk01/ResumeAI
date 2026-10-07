@@ -10,11 +10,10 @@ Test-fixing strategy (no new dependencies, no binary fixtures):
 
 import io
 
+import pytest
 from docx import Document as DocxDocument
 from fastapi.testclient import TestClient
 from httpx import Response
-
-import pytest
 
 from app.domain.exceptions import (
     DocumentParseError,
