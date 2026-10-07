@@ -146,7 +146,7 @@ Status
 3    Authentication & user management    Complete
 4    Dashboard & settings    Complete
 5    Resume upload & document processing    Complete
-6    AI analysis    Planned
+6    AI analysis    Complete
 7    Job matching    Planned
 8    Editor, templates & PDF export    Planned
 9    History & reports    Planned
