@@ -145,7 +145,7 @@ Status
 2    Design system & landing page    Complete
 3    Authentication & user management    Complete
 4    Dashboard & settings    Complete
-5    Resume upload & document processing    Planned
+5    Resume upload & document processing    Complete
 6    AI analysis    Planned
 7    Job matching    Planned
 8    Editor, templates & PDF export    Planned
@@ -159,5 +159,6 @@ Security Notes
 Local Postgres credentials in docker-compose.yml are for development only. Production
 secrets will be platform-managed (Phase 12). .env files are git-ignored and must
 never be committed.
+
 
 
