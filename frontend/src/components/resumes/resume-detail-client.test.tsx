@@ -11,8 +11,6 @@ const { getResumeMock, listAnalysesMock, analyzeResumeMock } = vi.hoisted(() => 
   analyzeResumeMock: vi.fn(),
 }));
 
-const paramsMock = vi.hoisted(() => vi.fn());
-
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "r-1" }),
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
