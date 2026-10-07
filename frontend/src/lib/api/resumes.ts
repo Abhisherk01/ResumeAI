@@ -1,5 +1,5 @@
 /**
- * Typed functions for the resume endpoints (Phase 5 Step 2).
+ * Typed functions for the resume and analysis endpoints (Phases 5-6).
  * Upload is the first multipart request in the app: it must NOT set
  * Content-Type (the browser derives the multipart boundary), which is why
  * it bypasses apiFetch's JSON body path and calls fetch directly — but it
@@ -19,6 +19,22 @@ export interface Resume {
 
 export interface ResumeDetail extends Resume {
   raw_text: string;
+}
+
+export interface Analysis {
+  id: string;
+  resume_id: string;
+  score: number;
+  scoring_version: string;
+  score_breakdown: {
+    version: string;
+    word_count: number;
+    dimensions: { name: string; earned: number; max: number; detail: string }[];
+  };
+  strengths: string[];
+  improvements: string[];
+  provider: string;
+  created_at: string;
 }
 
 const BASE_URL =
@@ -77,4 +93,14 @@ export async function getResume(id: string): Promise<ResumeDetail> {
 
 export async function deleteResume(id: string): Promise<void> {
   return apiFetch<void>(`/resumes/${id}`, { method: "DELETE" });
+}
+
+/** Phase 6: newest-first analyses of one resume. */
+export async function listAnalyses(resumeId: string): Promise<Analysis[]> {
+  return apiFetch<Analysis[]>(`/resumes/${resumeId}/analyses`);
+}
+
+/** Phase 6: score + store a new analysis snapshot (CSRF via apiFetch). */
+export async function analyzeResume(resumeId: string): Promise<Analysis> {
+  return apiFetch<Analysis>(`/resumes/${resumeId}/analyze`, { method: "POST" });
 }

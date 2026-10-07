@@ -30,11 +30,11 @@ beforeEach(() => {
 });
 
 describe("ResumeList", () => {
-  it("renders filenames with size and date", () => {
+  it("renders filenames as links to the detail page, with size and date", () => {
     render(<ResumeList resumes={items} onDeleted={vi.fn()} />);
 
-    expect(screen.getByText("cv-2026.pdf")).toBeInTheDocument();
-    expect(screen.getByText("cv-old.docx")).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: "cv-2026.pdf" });
+    expect(link).toHaveAttribute("href", "/resumes/r-1");
     expect(screen.getByText(/2 KB/)).toBeInTheDocument();
   });
 

@@ -10,6 +10,9 @@ const CODE_MESSAGES: Record<string, string> = {
   token_invalid: "This link is invalid or has expired.",
   rate_limited: "Too many attempts. Please wait a few minutes and try again.",
   validation_error: "Please check the highlighted fields and try again.",
+  ai_provider_error:
+    "The analysis service is temporarily unavailable. Please try again shortly.",
+  resume_not_found: "Resume not found. It may have been deleted.",
 };
 
 const FALLBACK_MESSAGE = "Something went wrong. Please try again.";

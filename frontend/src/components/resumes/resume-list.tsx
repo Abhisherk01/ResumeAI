@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { FileText, Trash2 } from "lucide-react";
 
 import { deleteResume } from "@/lib/api/resumes";
@@ -29,9 +30,9 @@ function formatDate(iso: string): string {
 }
 
 /**
- * The user's resumes, newest first (backend order preserved). Delete is
- * confirm-then-act: no global dialog primitive needed for one destructive
- * button — the row flips into an inline confirm state.
+ * The user's resumes, newest first (backend order preserved). The filename
+ * links to the detail page (Phase 6: analysis view). Delete is confirm-
+ * then-act via an inline confirm state.
  */
 export function ResumeList({
   resumes,
@@ -79,7 +80,12 @@ export function ResumeList({
           >
             <FileText className="h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-ink">{resume.filename}</p>
+              <Link
+                href={`/resumes/${resume.id}`}
+                className="block truncate text-sm font-medium text-ink hover:text-accent hover:underline"
+              >
+                {resume.filename}
+              </Link>
               <p className="text-xs text-ink-soft">
                 {formatSize(resume.file_size)} - {formatDate(resume.created_at)}
               </p>
