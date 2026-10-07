@@ -1,11 +1,19 @@
-import { PagePlaceholder } from "@/components/layout/page-placeholder";
+import type { Metadata } from "next";
+
+import { ResumesClient } from "@/components/resumes/resumes-client";
+
+export const metadata: Metadata = { title: "Resumes - ResumeAI" };
 
 export default function ResumesPage() {
   return (
-    <PagePlaceholder
-      title="Resumes"
-      description="Upload, review, and manage your resumes — with secure PDF/DOCX processing."
-      phase="Phase 5"
-    />
+    <div className="space-y-6">
+      <header className="space-y-1">
+        <h1 className="text-xl font-semibold">Resumes</h1>
+        <p className="text-sm text-ink-soft">
+          Upload and manage the resumes you analyze.
+        </p>
+      </header>
+      <ResumesClient />
+    </div>
   );
 }
