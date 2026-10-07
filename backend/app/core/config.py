@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     # lands in Phase 6 Step 3 behind the same AnalysisProvider protocol.
     AI_PROVIDER: str = "mock"
 
+    # Gemini API key (Phase 6 Step 3). Read from the environment directly by
+    # the provider (not stored in Settings) so it never appears in logs or
+    # error messages. Enable Gemini by setting AI_PROVIDER=gemini + this key.
+    GEMINI_API_KEY: str = ""
+
     # --- Rate limiting (Phase 3 Step 5) ---
     LOGIN_RATE_LIMIT_MAX: int = 5
     LOGIN_RATE_LIMIT_WINDOW_MINUTES: int = 15

@@ -97,3 +97,10 @@ class ResumeNotFoundError(DomainError):
     """No resume with this id belongs to this user. A foreign id and a
     missing id are deliberately indistinguishable (both become 404) so a
     probing request cannot discover which resume ids exist."""
+
+
+class AiProviderError(DomainError):
+    """The AI provider failed — network, quota, malformed response, or a
+    response that failed schema validation (P6-3: a malformed LLM answer is
+    an ERROR, never a silently-truncated guess). Mapped to 502: the failure
+    is upstream of our API, and 'bad gateway' is honest about that."""

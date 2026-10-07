@@ -1,15 +1,15 @@
 """Central translation of errors into the API error envelope.
 
 The project convention: every error response body is
-{"error": {"code": "...", "message": "..."}} — never FastAPI's default
+{"error": {"code": "...", "message": "..."}} ??? never FastAPI's default
 {"detail": ...}.
 
 Two handlers are registered here:
-1. DomainError handler — maps each app.domain.exceptions error to exactly
+1. DomainError handler ??? maps each app.domain.exceptions error to exactly
    ONE (status, code, message) via the table below. This table is the single
    place where domain vocabulary and HTTP vocabulary meet; adding a domain
    error without a table row falls through to a logged 500 (tests catch it).
-2. Starlette HTTPException handler — catches framework-raised errors (404
+2. Starlette HTTPException handler ??? catches framework-raised errors (404
    unknown route, 405 wrong method) so no response escapes the envelope.
 
 Domain errors are deliberately NOT logged: a failed login attempt is an
@@ -23,6 +23,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.domain.exceptions import (
+    AiProviderError,
     CsrfVerificationError,
     DocumentParseError,
     DomainError,
@@ -43,6 +44,11 @@ logger = logging.getLogger(__name__)
 # exception type -> (HTTP status, envelope code, generic public message)
 # Keep messages stable: the frontend matches on `code`, not text.
 _DOMAIN_ERROR_MAP: dict[type[DomainError], tuple[int, str, str]] = {
+    AiProviderError: (
+        502,
+        "ai_provider_error",
+        "The analysis service is temporarily unavailable. Please try again shortly.",
+    ),
     InvalidCredentialsError: (
         401,
         "invalid_credentials",
@@ -116,7 +122,7 @@ def register_error_handlers(application: FastAPI) -> None:
             if isinstance(exc, exc_type):
                 status_code, code, message = mapped
                 break
-        else:  # defensive: a DomainError nobody mapped — visible in logs
+        else:  # defensive: a DomainError nobody mapped ??? visible in logs
             logger.error("Unmapped DomainError: %r", exc)
             status_code, code, message = (
                 500,
@@ -142,3 +148,4 @@ def register_error_handlers(application: FastAPI) -> None:
             status_code=exc.status_code,
             content={"error": {"code": "http_error", "message": str(exc.detail)}},
         )
+
