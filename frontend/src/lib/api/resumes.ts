@@ -37,6 +37,24 @@ export interface Analysis {
   created_at: string;
 }
 
+export interface Match {
+  id: string;
+  resume_id: string;
+  job_title: string;
+  match_score: number;
+  matching_version: string;
+  match_breakdown: {
+    version: string;
+    jd_term_count: number;
+    dimensions: { name: string; earned: number; max: number; detail: string }[];
+  };
+  matched_keywords: string[];
+  missing_keywords: string[];
+  provider: string;
+  suggestions: { strengths: string[]; improvements: string[] };
+  created_at: string;
+}
+
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
@@ -103,4 +121,20 @@ export async function listAnalyses(resumeId: string): Promise<Analysis[]> {
 /** Phase 6: score + store a new analysis snapshot (CSRF via apiFetch). */
 export async function analyzeResume(resumeId: string): Promise<Analysis> {
   return apiFetch<Analysis>(`/resumes/${resumeId}/analyze`, { method: "POST" });
+}
+
+/** Phase 7: newest-first matches of one resume. */
+export async function listMatches(resumeId: string): Promise<Match[]> {
+  return apiFetch<Match[]>(`/resumes/${resumeId}/matches`);
+}
+
+/** Phase 7: score + store a new match snapshot (CSRF via apiFetch). */
+export async function createMatch(
+  resumeId: string,
+  payload: { job_description: string; job_title?: string }
+): Promise<Match> {
+  return apiFetch<Match>(`/resumes/${resumeId}/match`, {
+    method: "POST",
+    body: payload,
+  });
 }

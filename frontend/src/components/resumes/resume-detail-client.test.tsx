@@ -5,11 +5,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ResumeDetailClient } from "@/components/resumes/resume-detail-client";
 import { ApiError } from "@/lib/api/client";
 
-const { getResumeMock, listAnalysesMock, analyzeResumeMock } = vi.hoisted(() => ({
-  getResumeMock: vi.fn(),
-  listAnalysesMock: vi.fn(),
-  analyzeResumeMock: vi.fn(),
-}));
+const { getResumeMock, listAnalysesMock, analyzeResumeMock, listMatchesMock } =
+  vi.hoisted(() => ({
+    getResumeMock: vi.fn(),
+    listAnalysesMock: vi.fn(),
+    analyzeResumeMock: vi.fn(),
+    listMatchesMock: vi.fn(),
+  }));
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "r-1" }),
@@ -20,6 +22,7 @@ vi.mock("@/lib/api/resumes", () => ({
   getResume: getResumeMock,
   listAnalyses: listAnalysesMock,
   analyzeResume: analyzeResumeMock,
+  listMatches: listMatchesMock,
 }));
 
 const resume = {
@@ -59,9 +62,10 @@ beforeEach(() => {
 });
 
 describe("ResumeDetailClient", () => {
-  it("loads the resume and its analyses, and renders the panel", async () => {
+  it("loads the resume, analyses, and matches, and renders the panel", async () => {
     getResumeMock.mockResolvedValue(resume);
     listAnalysesMock.mockResolvedValue([analysis]);
+    listMatchesMock.mockResolvedValue([]);
 
     render(<ResumeDetailClient />);
 
@@ -73,6 +77,7 @@ describe("ResumeDetailClient", () => {
   it("re-analyze calls the API and prepends the new snapshot", async () => {
     getResumeMock.mockResolvedValue(resume);
     listAnalysesMock.mockResolvedValue([]);
+    listMatchesMock.mockResolvedValue([]);
     analyzeResumeMock.mockResolvedValue(analysis);
     const user = userEvent.setup();
 
@@ -86,6 +91,7 @@ describe("ResumeDetailClient", () => {
   it("maps ai_provider_error to the friendly message on analyze failure", async () => {
     getResumeMock.mockResolvedValue(resume);
     listAnalysesMock.mockResolvedValue([]);
+    listMatchesMock.mockResolvedValue([]);
     analyzeResumeMock.mockRejectedValue(
       new ApiError({
         status: 502,
