@@ -11,7 +11,9 @@ import pytest
 from app.domain.exceptions import AiProviderError
 from app.infrastructure.ai.gemini import (
     GeminiAnalysisProvider,
+    _build_match_prompt,
     _build_prompt,
+    _parse_match_suggestions,
     _parse_suggestions,
 )
 
@@ -93,3 +95,85 @@ def test_suggest_happy_path_with_fake_model():
 
     assert result.strengths == ["Quantified"]
     assert result.improvements == ["Add LinkedIn"]
+
+MATCH_BREAKDOWN = {
+    "version": "mv1",
+    "jd_term_count": 4,
+    "dimensions": [
+        {"name": "keyword_coverage", "earned": 35, "max": 70, "detail": "2/4"},
+        {"name": "jd_depth", "earned": 15, "max": 15, "detail": "40 words"},
+        {"name": "resume_depth", "earned": 15, "max": 15, "detail": "300 words"},
+    ],
+}
+
+
+def test_match_prompt_embeds_both_texts_keywords_and_no_score_rule():
+    prompt = _build_match_prompt(
+        "Resume text about Python",
+        "Job text about Kubernetes and Python",
+        MATCH_BREAKDOWN,
+        ["python"],
+        ["kubernetes"],
+    )
+
+    assert "Resume text about Python" in prompt
+    assert "Job text about Kubernetes" in prompt
+    assert "python" in prompt and "kubernetes" in prompt  # real keyword lists
+    assert "do NOT estimate" in prompt  # anti-fabrication/score rule present
+
+
+def test_match_parse_accepts_valid_json():
+    result = _parse_match_suggestions(
+        '{"strengths": ["Mentions python"], "improvements": ["Add kubernetes work"]}'
+    )
+
+    assert result.strengths == ["Mentions python"]
+    assert result.improvements == ["Add kubernetes work"]
+
+
+def test_match_parse_rejects_non_json_and_schema_violations():
+    with pytest.raises(AiProviderError):
+        _parse_match_suggestions("The match looks decent overall.")
+
+    with pytest.raises(AiProviderError):
+        _parse_match_suggestions('{"strengths": [], "improvements": ["x"]}')
+
+
+def test_match_suggest_maps_sdk_errors_to_provider_error():
+    provider = GeminiAnalysisProvider.__new__(GeminiAnalysisProvider)
+    provider._model = type("FakeModel", (), {})()
+
+    def boom(_prompt):
+        raise TimeoutError("quota exceeded")
+
+    provider._model.generate_content = boom
+
+    with pytest.raises(AiProviderError):
+        provider.suggest_match(
+            resume_text="text",
+            job_description="jd",
+            match_breakdown=MATCH_BREAKDOWN,
+            matched_keywords=["python"],
+            missing_keywords=["kubernetes"],
+        )
+
+
+def test_match_suggest_happy_path_with_fake_model():
+    provider = GeminiAnalysisProvider.__new__(GeminiAnalysisProvider)
+    provider._model = type("FakeModel", (), {})()
+
+    class FakeResponse:
+        text = '{"strengths": ["Aligned"], "improvements": ["Add kubernetes"]}'
+
+    provider._model.generate_content = lambda _prompt: FakeResponse()
+
+    result = provider.suggest_match(
+        resume_text="text",
+        job_description="jd",
+        match_breakdown=MATCH_BREAKDOWN,
+        matched_keywords=["python"],
+        missing_keywords=["kubernetes"],
+    )
+
+    assert result.strengths == ["Aligned"]
+    assert result.improvements == ["Add kubernetes"]
