@@ -45,3 +45,5 @@ extend-exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B"]
+[tool.ruff.lint.per-file-ignores]
+"alembic/env.py" = ["I001", "F401"]
