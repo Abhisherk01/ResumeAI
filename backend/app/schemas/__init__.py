@@ -16,12 +16,15 @@ from app.schemas.auth import (
     UserResponse,
     VerifyEmailRequest,
 )
+from app.schemas.match import CreateMatchRequest, MatchResponse
 from app.schemas.resume import ResumeDetailResponse, ResumeResponse
 
 __all__ = [
     "AnalysisResponse",
     "ChangePasswordRequest",
+    "CreateMatchRequest",
     "LoginRequest",
+    "MatchResponse",
     "MessageResponse",
     "PasswordResetConfirmRequest",
     "PasswordResetRequest",

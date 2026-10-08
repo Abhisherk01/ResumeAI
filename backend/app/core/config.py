@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     TOKEN_RATE_LIMIT_WINDOW_MINUTES: int = 15
     ANALYZE_RATE_LIMIT_MAX: int = 10
     ANALYZE_RATE_LIMIT_WINDOW_MINUTES: int = 60
+    MATCH_RATE_LIMIT_MAX: int = 10
+    MATCH_RATE_LIMIT_WINDOW_MINUTES: int = 60
     # Enable ONLY when a trusted reverse proxy sets X-Forwarded-For
     # (production deploy behind Render/Railway, Phase 12).
     TRUST_PROXY_HEADERS: bool = False

@@ -104,3 +104,9 @@ class AiProviderError(DomainError):
     response that failed schema validation (P6-3: a malformed LLM answer is
     an ERROR, never a silently-truncated guess). Mapped to 502: the failure
     is upstream of our API, and 'bad gateway' is honest about that."""
+
+
+class InvalidJobDescriptionError(DomainError):
+    """The pasted job description is empty or too short to match against
+    (the deterministic engine needs salient terms to exist). Mapped to 422
+    with a specific message — this is user-fixable input, not a server fault."""

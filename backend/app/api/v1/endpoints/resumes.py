@@ -23,10 +23,12 @@ from app.core.config import settings
 from app.core.ratelimit import RateLimiter
 from app.schemas import (
     AnalysisResponse,
+    CreateMatchRequest,
+    MatchResponse,
     ResumeDetailResponse,
     ResumeResponse,
 )
-from app.services import analysis_service, resume_service
+from app.services import analysis_service, match_service, resume_service
 
 router = APIRouter(prefix="/resumes", tags=["Resumes"])
 
@@ -35,6 +37,11 @@ analyze_limiter = RateLimiter(
     name="analyze",
     limit=settings.ANALYZE_RATE_LIMIT_MAX,
     window_seconds=settings.ANALYZE_RATE_LIMIT_WINDOW_MINUTES * 60,
+)
+match_limiter = RateLimiter(
+    name="match",
+    limit=settings.MATCH_RATE_LIMIT_MAX,
+    window_seconds=settings.MATCH_RATE_LIMIT_WINDOW_MINUTES * 60,
 )
 
 
@@ -110,3 +117,38 @@ def list_analyses(
         db, user_id=user.id, resume_id=resume_id
     )
     return [AnalysisResponse.model_validate(analysis) for analysis in analyses]
+
+
+@router.post(
+    "/{resume_id}/match",
+    response_model=MatchResponse,
+    dependencies=[Depends(match_limiter)],
+)
+def create_match(
+    payload: CreateMatchRequest,
+    db: DbSession,
+    user: CurrentUser,
+    _csrf: CsrfGuard,
+    resume_id: uuid.UUID,
+) -> MatchResponse:
+    """Match one of THIS user's resumes against a pasted description (P7-4).
+    Foreign resume -> 404; description too short -> 422."""
+    match = match_service.create_match(
+        db,
+        user_id=user.id,
+        resume_id=resume_id,
+        job_description=payload.job_description,
+        job_title=payload.job_title,
+    )
+    return MatchResponse.model_validate(match)
+
+
+@router.get("/{resume_id}/matches", response_model=list[MatchResponse])
+def list_matches(
+    db: DbSession, user: CurrentUser, resume_id: uuid.UUID
+) -> list[MatchResponse]:
+    """Newest-first matches of one resume. Read-only: no CSRF."""
+    matches = match_service.list_matches(
+        db, user_id=user.id, resume_id=resume_id
+    )
+    return [MatchResponse.model_validate(match) for match in matches]

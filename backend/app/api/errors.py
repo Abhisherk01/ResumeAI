@@ -32,6 +32,7 @@ from app.domain.exceptions import (
     FileTooLargeError,
     InvalidCredentialsError,
     InvalidCurrentPasswordError,
+    InvalidJobDescriptionError,
     NotAuthenticatedError,
     RateLimitExceededError,
     ResumeNotFoundError,
@@ -58,6 +59,11 @@ _DOMAIN_ERROR_MAP: dict[type[DomainError], tuple[int, str, str]] = {
         400,
         "invalid_current_password",
         "Current password is incorrect.",
+    ),
+    InvalidJobDescriptionError: (
+        422,
+        "invalid_job_description",
+        "Paste a longer job description so there is something to match against.",
     ),
     EmailNotVerifiedError: (
         403,
@@ -148,4 +154,5 @@ def register_error_handlers(application: FastAPI) -> None:
             status_code=exc.status_code,
             content={"error": {"code": "http_error", "message": str(exc.detail)}},
         )
+
 

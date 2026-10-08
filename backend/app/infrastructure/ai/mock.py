@@ -1,16 +1,11 @@
-"""The mock provider: deterministic, rule-based suggestions from the score
-breakdown itself. Zero network, zero randomness — the same resume always
-yields the same suggestions, and every test in the suite runs on this
-(the locked rule), enforced by conftest regardless of AI_PROVIDER.
-"""
+"""The mock provider: deterministic, rule-based suggestions from the
+breakdown itself. Zero network, zero randomness — and the ONLY provider
+tests ever use (conftest enforces it)."""
 
 from app.infrastructure.ai.base import SuggestionResult
 
 _MAX_PER_LIST = 5
 
-# Per-dimension copy. Strengths fire at full marks; improvements at zero or
-# under half. Wording references ONLY what the rubric actually measured —
-# the mock cannot fabricate, because it has nothing but the breakdown.
 _STRENGTH_LINES = {
     "contact": (
         "Contact details are complete - email, phone, and a profile link "
@@ -65,16 +60,54 @@ class MockAnalysisProvider:
             elif earned == 0 or earned < maximum / 2:
                 improvements.append(_IMPROVEMENT_LINES[name])
 
-        # Honest fallbacks, not filler: the mock says exactly what it can.
         if not strengths:
             strengths.append(
-                "You have a foundation to build on — the checklist below is ordered by impact."
+                "You have a foundation to build on - the improvements below "
+                "are ordered by impact."
             )
         if not improvements:
             improvements.append(
-                "Strong resume. The next step is tailoring it to each job description you apply to."
+                "Strong resume. The next step is tailoring it to each job "
+                "description you apply to."
             )
 
+        return SuggestionResult(
+            strengths=strengths[:_MAX_PER_LIST],
+            improvements=improvements[:_MAX_PER_LIST],
+        )
+
+    def suggest_match(
+        self,
+        *,
+        resume_text: str,
+        job_description: str,
+        match_breakdown: dict,
+        matched_keywords: list[str],
+        missing_keywords: list[str],
+    ) -> SuggestionResult:
+        """Rule-based match text grounded in the REAL keyword lists (P7-6):
+        references only the terms it was given, never invents others, never
+        estimates a score."""
+        strengths: list[str] = []
+        improvements: list[str] = []
+
+        if matched_keywords:
+            top = ", ".join(matched_keywords[:5])
+            strengths.append(f"Your resume already mentions: {top}.")
+        if len(matched_keywords) >= 5:
+            strengths.append(
+                "Strong keyword overlap with this job description."
+            )
+
+        if missing_keywords:
+            top = ", ".join(missing_keywords[:5])
+            improvements.append(
+                f"The description mentions terms your resume does not: {top}. "
+                "Where you have real experience with them, add them with "
+                "concrete outcomes."
+            )
+        if not strengths:
+            strengths = ["No clear strengths surfaced for this pairing."]
         return SuggestionResult(
             strengths=strengths[:_MAX_PER_LIST],
             improvements=improvements[:_MAX_PER_LIST],
