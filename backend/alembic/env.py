@@ -5,6 +5,7 @@ from sqlalchemy import engine_from_config, pool
 import app.db.models.analysis  # noqa: F401
 import app.db.models.match  # noqa: F401
 import app.db.models.resume  # noqa: F401
+import app.db.models.resume_document  # noqa: F401
 from alembic import context
 from app.core.config import settings
 from app.db.session import Base

@@ -18,6 +18,7 @@ from app.db.session import Base
 if TYPE_CHECKING:
     from app.db.models.analysis import Analysis
     from app.db.models.match import Match
+    from app.db.models.resume_document import ResumeDocument
 
 
 class Resume(Base):
@@ -61,6 +62,11 @@ class Resume(Base):
     # ON DELETE CASCADE on each child table is the Postgres safety net).
     analyses: Mapped[list["Analysis"]] = relationship(cascade="all, delete-orphan")
     matches: Mapped[list["Match"]] = relationship(cascade="all, delete-orphan")
+    # document is 1:1 (uselist=False) and OPTIONAL: a resume can exist before its
+    # owner ever opens the editor (P8-3: no auto-import from raw_text).
+    document: Mapped["ResumeDocument | None"] = relationship(
+        cascade="all, delete-orphan", uselist=False
+    )
 
     def __repr__(self) -> str:
         return f"<Resume id={self.id} filename={self.filename!r} user_id={self.user_id}>"
