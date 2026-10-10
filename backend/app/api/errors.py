@@ -25,6 +25,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.domain.exceptions import (
     AiProviderError,
     CsrfVerificationError,
+    DocumentNotFoundError,
     DocumentParseError,
     DomainError,
     EmailNotVerifiedError,
@@ -109,6 +110,11 @@ _DOMAIN_ERROR_MAP: dict[type[DomainError], tuple[int, str, str]] = {
         422,
         "empty_document",
         "No text could be extracted. Scanned (image-only) PDFs are not supported.",
+    ),
+    DocumentNotFoundError: (
+        404,
+        "document_not_found",
+        "No document saved for this resume yet.",
     ),
     ResumeNotFoundError: (
         404,

@@ -99,6 +99,14 @@ class ResumeNotFoundError(DomainError):
     probing request cannot discover which resume ids exist."""
 
 
+class DocumentNotFoundError(DomainError):
+    """No document has been saved for this resume yet (P8-3: uploading
+    never auto-creates one). Distinct from ResumeNotFoundError on purpose:
+    the resume EXISTS and belongs to the caller - only the editable
+    document is absent, and the editor's correct reaction is to start
+    empty, not to show a broken link."""
+
+
 class AiProviderError(DomainError):
     """The AI provider failed — network, quota, malformed response, or a
     response that failed schema validation (P6-3: a malformed LLM answer is

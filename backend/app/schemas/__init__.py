@@ -18,6 +18,7 @@ from app.schemas.auth import (
 )
 from app.schemas.match import CreateMatchRequest, MatchResponse
 from app.schemas.resume import ResumeDetailResponse, ResumeResponse
+from app.schemas.resume_document import ResumeDocumentResponse, ResumeDocumentSave
 
 __all__ = [
     "AnalysisResponse",
@@ -30,6 +31,8 @@ __all__ = [
     "PasswordResetRequest",
     "RegisterRequest",
     "ResumeDetailResponse",
+    "ResumeDocumentResponse",
+    "ResumeDocumentSave",
     "ResumeResponse",
     "UpdateProfileRequest",
     "UserResponse",

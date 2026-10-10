@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ document.basics.name or "Untitled Resume" }}</title>
+<style>
+  body { font-family: Georgia, "Times New Roman", serif; color: #1a1a1a;
+         max-width: 800px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+  h1 { margin: 0 0 0.2rem 0; font-size: 1.7rem; }
+  .contact { color: #444; font-size: 0.9rem; margin: 0 0 1.5rem 0; }
+  .contact span + span::before { content: " | "; color: #999; }
+  h2 { font-size: 1.05rem; letter-spacing: 0.03em; text-transform: uppercase;
+       border-bottom: 1px solid #ccc; padding-bottom: 0.2rem; margin: 1.4rem 0 0.6rem 0; }
+  .item { margin-bottom: 0.8rem; }
+  .item-head { display: flex; justify-content: space-between; gap: 1rem; }
+  .meta { color: #555; font-size: 0.85rem; }
+  ul { margin: 0.3rem 0 0 0; padding-left: 1.2rem; }
+  .empty-note { color: #888; font-style: italic; margin-top: 2rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>{{ document.basics.name or "Untitled Resume" }}</h1>
+  <p class="contact">{% for piece in [document.basics.email, document.basics.phone, document.basics.location] %}{% if piece %}<span>{{ piece }}</span>{% endif %}{% endfor %}{% for link in document.basics.links %}<span>{{ link }}</span>{% endfor %}</p>
+</header>
+
+{% if document.summary %}
+<section>
+  <h2>Summary</h2>
+  <p>{{ document.summary }}</p>
+</section>
+{% endif %}
+
+{% if document.experience %}
+<section>
+  <h2>Experience</h2>
+  {% for job in document.experience %}
+  <div class="item">
+    <div class="item-head"><strong>{{ job.title }}</strong><span class="meta">{{ job.start }} - {{ job.end }}</span></div>
+    <div class="meta">{{ job.company }}</div>
+    {% if job.bullets %}
+    <ul>
+      {% for bullet in job.bullets %}<li>{{ bullet }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if document.education %}
+<section>
+  <h2>Education</h2>
+  {% for ed in document.education %}
+  <div class="item">
+    <div class="item-head"><strong>{{ ed.school }}</strong><span class="meta">{{ ed.start }} - {{ ed.end }}</span></div>
+    <div class="meta">{{ ed.degree }}</div>
+    {% if ed.bullets %}
+    <ul>
+      {% for bullet in ed.bullets %}<li>{{ bullet }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if document.skills %}
+<section>
+  <h2>Skills</h2>
+  <p>{{ document.skills | join(" | ") }}</p>
+</section>
+{% endif %}
+
+{% if document.projects %}
+<section>
+  <h2>Projects</h2>
+  {% for project in document.projects %}
+  <div class="item">
+    <div class="item-head"><strong>{{ project.name }}</strong>
+      {% if project.url %}<span class="meta">{{ project.url }}</span>{% endif %}
+    </div>
+    {% if project.bullets %}
+    <ul>
+      {% for bullet in project.bullets %}<li>{{ bullet }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if not (document.basics.name or document.summary or document.experience or document.education or document.skills or document.projects) %}
+<p class="empty-note">This document is empty - open the editor to start filling it in.</p>
+{% endif %}
+</body>
+</html>
