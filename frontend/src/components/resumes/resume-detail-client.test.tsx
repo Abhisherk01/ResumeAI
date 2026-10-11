@@ -70,6 +70,7 @@ describe("ResumeDetailClient", () => {
     render(<ResumeDetailClient />);
 
     expect(await screen.findByText("cv.pdf")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /edit document/i })).toHaveAttribute("href", "/resumes/r-1/editor");
     expect(screen.getByText("70")).toBeInTheDocument();
     expect(screen.getByRole("note")).toHaveTextContent(/not ATS verdicts/i);
   });

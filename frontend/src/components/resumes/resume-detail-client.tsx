@@ -123,10 +123,18 @@ export function ResumeDetailClient() {
               ` ${matches.length} match${matches.length > 1 ? "es" : ""} on record.`}
           </p>
         </div>
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/resumes/${resumeId}/editor`}
+            className="text-sm font-medium text-accent hover:underline"
+          >
+            Edit document
+          </Link>
         <Button onClick={() => void handleAnalyze()} loading={analyzing}>
-          <Sparkles className="h-4 w-4" aria-hidden="true" />
-          {analyses.length === 0 ? "Analyze resume" : "Re-analyze"}
-        </Button>
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            {analyses.length === 0 ? "Analyze resume" : "Re-analyze"}
+          </Button>
+        </div>
       </div>
       <FormError>{analyzeError ?? undefined}</FormError>
       {latestAnalysis && <AnalysisPanel analysis={latestAnalysis} />}
