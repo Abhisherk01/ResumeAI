@@ -72,7 +72,8 @@ export async function saveResumeDocument(
 }
 
 /** HTML of the SAVED document (D3) - fetched, never iframed (the API sends
- * X-Frame-Options: DENY by design; 4b embeds this via sandboxed srcdoc). */
+ * X-Frame-Options: DENY by design; the editor embeds this via a sandboxed
+ * srcdoc iframe). */
 export async function fetchResumePreviewHtml(resumeId: string): Promise<string> {
   const response = await fetch(`${BASE_URL}/resumes/${resumeId}/preview`, {
     credentials: "include",
@@ -84,8 +85,18 @@ export async function fetchResumePreviewHtml(resumeId: string): Promise<string> 
   return response.text();
 }
 
-/** PDF bytes of the SAVED document (D6) - a blob for browser download. */
-export async function exportResumeDocumentPdf(resumeId: string): Promise<Blob> {
+export interface ExportedDocument {
+  blob: Blob;
+  /** Server-sanitized download filename (Content-Disposition). The client
+   * never duplicates the backend's sanitization - it trusts the header. */
+  filename: string;
+}
+
+/** PDF bytes of the SAVED document (D6/D17) - a blob plus the server's
+ * sanitized attachment filename for the browser download. */
+export async function exportResumeDocumentPdf(
+  resumeId: string
+): Promise<ExportedDocument> {
   const headers: Record<string, string> = {};
   const csrf = readCookie("csrf_token");
   if (csrf) headers["X-CSRF-Token"] = csrf;
@@ -99,5 +110,10 @@ export async function exportResumeDocumentPdf(resumeId: string): Promise<Blob> {
   if (!response.ok) {
     throw await toApiError(response, "Export failed.");
   }
-  return response.blob();
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const match = disposition.match(/filename="([^"]+)"/);
+  return {
+    blob: await response.blob(),
+    filename: match?.[1] ?? "resume.pdf",
+  };
 }
