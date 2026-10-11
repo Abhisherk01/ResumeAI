@@ -1,4 +1,4 @@
-"""Editable resume document orchestration (Phase 8, P8-2..P8-4).
+"""Editable resume document orchestration (Phase 8, P8-2..P8-5).
 
 One transaction per operation, mirroring resume_service - the tiny
 _transaction helper is duplicated here deliberately rather than shared,
@@ -10,16 +10,24 @@ created on first save and updated in place after (mutable-by-design,
 P8-2), while the content payload is re-validated through the Pydantic
 contract on EVERY save boundary (P8-4) - the stored JSON is always
 ResumeDocumentData-shaped, whatever wrote it.
+
+export_document_pdf (P8-5) is read-only: it renders the SAVED document
+through the SAME renderer the preview uses, then hands the HTML to the
+pdf infrastructure boundary. No transaction - nothing is written.
 """
 
+import os
+import re
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 
 from sqlalchemy.orm import Session
 
+from app.db.models.resume import Resume
 from app.db.models.resume_document import ResumeDocument
 from app.domain.exceptions import DocumentNotFoundError, ResumeNotFoundError
+from app.infrastructure.pdf import html_to_pdf
 from app.repositories import ResumeDocumentRepository, ResumeRepository
 from app.schemas.resume_document import ResumeDocumentData, ResumeDocumentSave
 from app.services.rendering import render_document_html
@@ -39,12 +47,14 @@ def _transaction(db: Session) -> Iterator[Session]:
         raise
 
 
-def _require_resume(db: Session, *, user_id: uuid.UUID, resume_id: uuid.UUID) -> None:
+def _require_resume(db: Session, *, user_id: uuid.UUID, resume_id: uuid.UUID) -> Resume:
     """Ownership gate: foreign or missing resume ids are the same error,
-    which is the same rule the resumes endpoints enforce (404, never 403)."""
+    which is the same rule the resumes endpoints enforce (404, never 403).
+    Returns the resume so callers that need more than the gate have it."""
     resume = _resume_repo.get_for_user(db, resume_id=resume_id, user_id=user_id)
     if resume is None:
         raise ResumeNotFoundError
+    return resume
 
 
 def get_document(
@@ -104,4 +114,35 @@ def render_document_preview(
     only because it was validated on the way in."""
     document = get_document(db, user_id=user_id, resume_id=resume_id)
     data = ResumeDocumentData.model_validate(document.content)
-    return render_document_html(data, template_id=document.template_id)
+    return render_document_html(
+        data, template_id=document.template_id, accent=document.accent
+    )
+
+
+def export_document_pdf(
+    db: Session, *, user_id: uuid.UUID, resume_id: uuid.UUID
+) -> tuple[bytes, str]:
+    """PDF bytes plus a safe download filename for the SAVED document.
+
+    Same ownership and 404 semantics as every other document operation:
+    no saved document -> DocumentNotFoundError (you cannot export what was
+    never composed, P8-3). One renderer, two consumers: the HTML here is
+    byte-identical to what preview serves."""
+    resume = _require_resume(db, user_id=user_id, resume_id=resume_id)
+    document = get_document(db, user_id=user_id, resume_id=resume_id)
+    data = ResumeDocumentData.model_validate(document.content)
+    html = render_document_html(
+        data, template_id=document.template_id, accent=document.accent
+    )
+    pdf = html_to_pdf(html)
+    return pdf, _download_filename(resume.filename)
+
+
+def _download_filename(resume_filename: str) -> str:
+    """Derive a safe attachment filename from the resume's own filename:
+    keep word characters, dots, hyphens; collapse everything else; strip
+    edge junk; never empty. The extension is always .pdf. The whitelist
+    also kills any header-injection attempt (CR/LF cannot survive)."""
+    stem = os.path.splitext(resume_filename)[0]
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "-", stem).strip("-.")
+    return f"{safe or 'resume'}.pdf"

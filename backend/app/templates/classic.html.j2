@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ document.basics.name or "Untitled Resume" }}</title>
+<style>
+{% include "css/shared.css.j2" %}
+{% include "css/classic.css.j2" %}
+</style>
+</head>
+<body class="resume accent-{{ accent }} t-classic">
+{% include "partials/document_body.html.j2" %}
+</body>
+</html>

@@ -1,0 +1,14 @@
+{#- Modern: sans-serif, accent identity bar, skills as chips. -#}
+body { font-family: "Segoe UI", Arial, Helvetica, sans-serif; font-size: 0.95rem; }
+header { border-bottom: 3px solid var(--accent); padding-bottom: 0.8rem; margin-bottom: 1.2rem; }
+h1 { color: var(--accent); font-size: 1.9rem; }
+h2 { border-bottom: none; padding-bottom: 0; margin-bottom: 0.4rem; }
+.skills-line .skill {
+  display: inline-block;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0.05rem 0.5rem;
+  margin: 0.15rem 0.2rem 0.15rem 0;
+}
+.skills-line .skill + .skill::before { content: none; }

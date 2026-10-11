@@ -107,6 +107,14 @@ class DocumentNotFoundError(DomainError):
     empty, not to show a broken link."""
 
 
+class PdfExportError(DomainError):
+    """PDF rendering failed at the WeasyPrint boundary (Phase 8, P8-5).
+    Mirrors DocumentParseError: every library failure becomes this one
+    domain error. Deliberately UNMAPPED in errors.py - the fallthrough
+    logs it (a server fault must be visible) and answers 500
+    internal_error, the standard envelope."""
+
+
 class AiProviderError(DomainError):
     """The AI provider failed — network, quota, malformed response, or a
     response that failed schema validation (P6-3: a malformed LLM answer is

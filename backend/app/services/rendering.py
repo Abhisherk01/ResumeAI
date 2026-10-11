@@ -1,4 +1,4 @@
-"""HTML rendering for resume documents (Phase 8, P8-5 groundwork).
+"""HTML rendering for resume documents (Phase 8, P8-5).
 
 Security posture, stated so it is never relaxed casually:
 - autoescape=True is the BOOLEAN, not select_autoescape: no template-file
@@ -9,11 +9,19 @@ Security posture, stated so it is never relaxed casually:
 - The API's X-Frame-Options: DENY / CSP frame-ancestors 'none' stay in
   force: Step 4 embeds this HTML via a credentialed FETCH into a
   sandboxed srcdoc iframe, never by framing the API directly.
+
+Step 3: all four storable template ids (P8-5) have real files, so the
+Step-2 fallback is GONE - an unknown id raises TemplateNotFound and fails
+loudly. It cannot occur through the API: the save schema's Literal is the
+boundary, and a loud failure beats silently rendering the wrong design.
+
+The SAME rendered string feeds the preview endpoint and WeasyPrint
+export - one visual source of truth.
 """
 
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader, TemplateNotFound
+from jinja2 import Environment, FileSystemLoader
 
 from app.schemas.resume_document import ResumeDocumentData
 
@@ -26,13 +34,9 @@ _environment = Environment(
 
 
 def render_document_html(
-    data: ResumeDocumentData, *, template_id: str = "classic"
+    data: ResumeDocumentData, *, template_id: str, accent: str
 ) -> str:
-    """Render one document. Step 2 ships ONE draft template; until Step 3
-    lands the four real ones, a stored template_id without a template file
-    falls back to the draft - a valid save must never 500 on preview."""
-    try:
-        template = _environment.get_template(f"{template_id}.html.j2")
-    except TemplateNotFound:
-        template = _environment.get_template("resume_document.html.j2")
-    return template.render(document=data)
+    """Render one document with one accent palette. Both ids are stored
+    columns, Literal-validated at every save (P8-4)."""
+    template = _environment.get_template(f"{template_id}.html.j2")
+    return template.render(document=data, accent=accent)

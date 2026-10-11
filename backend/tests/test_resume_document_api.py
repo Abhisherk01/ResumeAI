@@ -374,9 +374,10 @@ def test_preview_of_empty_document_says_untitled(client, email_outbox):
     assert "Untitled Resume" in response.text
 
 
-def test_preview_unknown_template_id_falls_back_not_500(client, email_outbox):
-    """Step 2 ships ONE template; a valid save of 'modern' must preview
-    via the documented fallback until Step 3 lands the real four."""
+def test_preview_modern_template_renders_its_own_design(client, email_outbox):
+    """Step 3 shipped all four templates: 'modern' now renders the real
+    modern sheet (the Step-2 fallback was load-bearing only while three of
+    the four storable ids had no template file)."""
     _register_verify_login(client, email_outbox)
     resume_id = _upload(client, text="Resume text").json()["id"]
     _save(client, resume_id, template_id="modern")

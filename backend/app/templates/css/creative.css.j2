@@ -1,0 +1,8 @@
+{#- Creative: accent-heavy - uppercase display name, thick accent rules,
+    accent bullets. -#}
+body { font-family: "Trebuchet MS", Verdana, sans-serif; }
+h1 { font-size: 2.1rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+h2 { border-bottom-width: 3px; border-bottom-color: var(--accent); }
+.item-head strong { color: var(--accent); }
+ul { list-style: none; padding-left: 0.9rem; }
+ul li::before { content: "- "; color: var(--accent); font-weight: bold; }

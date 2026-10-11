@@ -1,0 +1,71 @@
+{#-
+    ResumeAI shared resume stylesheet (Phase 8, P8-5).
+
+    Inlined into every template via {% include %}: preview (srcdoc iframe)
+    and WeasyPrint export consume the SAME composed HTML - one visual source
+    of truth. No external assets, ever: the export must be self-contained.
+
+    Accent palette (P8-5): six tokens applied as CSS custom properties via
+    the body class "accent-<name>" - mirrors the frontend's CSS-variable
+    token approach. WeasyPrint 70 resolves custom properties at print time.
+  -#}
+  :root {
+    --ink: #1a1a1a;
+    --muted: #555555;
+    --rule: #d4d4d4;
+    --paper: #ffffff;
+    --accent: #2563eb;
+  }
+
+  .accent-blue   { --accent: #2563eb; }
+  .accent-teal   { --accent: #0f766e; }
+  .accent-green  { --accent: #15803d; }
+  .accent-amber  { --accent: #b45309; }
+  .accent-rose   { --accent: #be123c; }
+  .accent-violet { --accent: #6d28d9; }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: Georgia, "Times New Roman", serif;
+    color: var(--ink);
+    background: var(--paper);
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    line-height: 1.5;
+  }
+
+  h1 { margin: 0 0 0.2rem 0; font-size: 1.7rem; }
+
+  .contact {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin: 0 0 1.5rem 0;
+  }
+  .contact span + span::before { content: " | "; color: var(--rule); }
+
+  h2 {
+    font-size: 1.05rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 0.2rem;
+    margin: 1.4rem 0 0.6rem 0;
+  }
+
+  .item { margin-bottom: 0.8rem; }
+  .item-head { display: flex; justify-content: space-between; gap: 1rem; }
+  .meta { color: var(--muted); font-size: 0.85rem; }
+  ul { margin: 0.3rem 0 0 0; padding-left: 1.2rem; }
+  a { color: var(--accent); text-decoration: none; }
+  .skills-line { margin: 0; }
+  .skill + .skill::before { content: " | "; color: var(--rule); }
+  .empty-note { color: var(--muted); font-style: italic; margin-top: 2rem; }
+
+  /* Print: A4, tight margins, no screen chrome. WeasyPrint reads @page. */
+  @page { size: A4; margin: 18mm 16mm; }
+  @media print {
+    body { max-width: none; margin: 0; padding: 0; }
+  }
