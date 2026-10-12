@@ -148,7 +148,7 @@ Status
 5    Resume upload & document processing    Complete
 6    AI analysis    Complete
 7    Job matching    Complete
-8    Editor, templates & PDF export    Planned
+8    Editor, templates & PDF export    Complete
 9    History & reports    Planned
 10    Integration, security & performance    Planned
 11    Docker & CI    Planned
