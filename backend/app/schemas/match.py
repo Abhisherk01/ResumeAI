@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class CreateMatchRequest(BaseModel):
     """The user pastes the JD verbatim. Title is an optional label shown in
     lists. Length floor mirrors the jd_depth rubric band (below 25 words,
-    coverage means little — the floor is set slightly under it so the rubric
+    coverage means little - the floor is set slightly under it so the rubric
     can still award 'thin' and the UI can explain that)."""
 
     job_description: str = Field(min_length=50, max_length=15_000)
@@ -17,7 +17,7 @@ class CreateMatchRequest(BaseModel):
 
 
 class MatchResponse(BaseModel):
-    """One stored match snapshot — score with breakdown, the REAL keyword
+    """One stored match snapshot - score with breakdown, the REAL keyword
     lists (the actionable output), provider text, provenance."""
 
     model_config = ConfigDict(from_attributes=True)
@@ -33,3 +33,5 @@ class MatchResponse(BaseModel):
     provider: str
     suggestions: dict
     created_at: datetime
+    # Populated ONLY by the Phase 9 history endpoints (see analysis.py).
+    resume_filename: str = ""
