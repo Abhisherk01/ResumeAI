@@ -5,9 +5,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ResumeEditorClient } from "@/components/resumes/editor/resume-editor-client";
 import { ApiError } from "@/lib/api/client";
 
-const { getResumeDocumentMock, saveResumeDocumentMock } = vi.hoisted(() => ({
+const {
+  getResumeDocumentMock,
+  saveResumeDocumentMock,
+  fetchPreviewMock,
+  exportMock,
+} = vi.hoisted(() => ({
   getResumeDocumentMock: vi.fn(),
   saveResumeDocumentMock: vi.fn(),
+  fetchPreviewMock: vi.fn(),
+  exportMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -17,6 +24,8 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/api/resume-documents", () => ({
   getResumeDocument: getResumeDocumentMock,
   saveResumeDocument: saveResumeDocumentMock,
+  fetchResumePreviewHtml: fetchPreviewMock,
+  exportResumeDocumentPdf: exportMock,
 }));
 
 const savedDocument = {
@@ -44,6 +53,9 @@ const savedDocument = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // The preview pane renders in every mounted editor; give it a resolved
+  // default so its error alert never competes with the ones tests assert.
+  fetchPreviewMock.mockResolvedValue("<h1>Preview</h1>");
 });
 
 describe("ResumeEditorClient", () => {
@@ -164,5 +176,49 @@ describe("ResumeEditorClient", () => {
     expect(
       screen.getByRole("link", { name: /back to resume/i })
     ).toHaveAttribute("href", "/resumes/r-1");
+  });
+
+  it("carries picker selections into the save payload (D15)", async () => {
+    getResumeDocumentMock.mockResolvedValue(savedDocument);
+    saveResumeDocumentMock.mockResolvedValue(savedDocument);
+    const user = userEvent.setup();
+
+    render(<ResumeEditorClient />);
+    await screen.findByLabelText("Name");
+    await user.click(screen.getByRole("radio", { name: "Creative" }));
+    await user.click(screen.getByRole("radio", { name: "Violet accent" }));
+    await user.click(screen.getByRole("button", { name: /save document/i }));
+
+    await waitFor(() =>
+      expect(saveResumeDocumentMock).toHaveBeenCalledWith(
+        "r-1",
+        expect.objectContaining({ template_id: "creative", accent: "violet" })
+      )
+    );
+  });
+
+  it("refetches the preview after a successful save (D16)", async () => {
+    getResumeDocumentMock.mockResolvedValue(savedDocument);
+    saveResumeDocumentMock.mockResolvedValue(savedDocument);
+    const user = userEvent.setup();
+
+    render(<ResumeEditorClient />);
+    await screen.findByTitle("Resume preview");
+    expect(fetchPreviewMock).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole("button", { name: /save document/i }));
+
+    await waitFor(() => expect(fetchPreviewMock).toHaveBeenCalledTimes(2));
+  });
+
+  it("renders the preview and export surfaces after load", async () => {
+    getResumeDocumentMock.mockResolvedValue(savedDocument);
+
+    render(<ResumeEditorClient />);
+
+    expect(await screen.findByTitle("Resume preview")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /download pdf/i })
+    ).toBeInTheDocument();
   });
 });

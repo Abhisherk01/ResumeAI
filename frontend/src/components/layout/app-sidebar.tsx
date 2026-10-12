@@ -110,7 +110,7 @@ export function AppSidebar() {
 
       {/* Mobile drawer (reuses the Dialog primitive as a left sheet) */}
       <Dialog open={mobileOpen} onOpenChange={setMobileOpen}>
-        <DialogContent className="inset-y-0 left-0 top-0 h-full max-w-xs translate-x-0 translate-y-0 rounded-neu-lg data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left">
+        <DialogContent className="inset-y-0 left-0 top-0 h-full max-w-xs translate-x-0 translate-y-0 rounded-neu-lg data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left duration-300 ease-out">
           <DialogTitle className="sr-only">Application navigation</DialogTitle>
           <div className="flex h-full flex-col">
             <Logo className="mb-8" />
