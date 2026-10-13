@@ -86,3 +86,26 @@ export async function changePassword(input: {
     body: input,
   });
 }
+
+/** Phase 10 (D24): request an email change. The response is identical for
+ * every target-address branch (D24c) - the UI must keep it that way. */
+export async function requestEmailChange(input: {
+  current_password: string;
+  new_email: string;
+}): Promise<MessageResponse> {
+  return apiFetch<MessageResponse>("/auth/me/email", {
+    method: "POST",
+    body: input,
+  });
+}
+
+/** Phase 10 (D24): consume the emailed token and swap the address.
+ * Works without a session (anonymous-able) - the token authorizes. */
+export async function confirmEmailChange(payload: {
+  token: string;
+}): Promise<MessageResponse> {
+  return apiFetch<MessageResponse>("/auth/me/email/confirm", {
+    method: "POST",
+    body: payload,
+  });
+}

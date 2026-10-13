@@ -97,3 +97,12 @@ export type ChangePasswordPayload = {
 
 /** Full form shape for the password-change form (includes confirmPassword). */
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+/** Phase 10 (D24): email change mirrors RequestEmailChangeRequest - the
+ * CURRENT password proves ownership; the token goes to the NEW address. */
+export const requestEmailChangeSchema = z.object({
+  current_password: z.string().min(1, "Current password is required.").max(128),
+  new_email: emailField,
+});
+
+export type RequestEmailChangeInput = z.infer<typeof requestEmailChangeSchema>;
