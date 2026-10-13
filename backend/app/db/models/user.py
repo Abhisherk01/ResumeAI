@@ -9,7 +9,7 @@ from app.db.session import Base
 
 if TYPE_CHECKING:
     from app.db.models.resume import Resume  # ADDED in Phase 5
-    from app.db.models.tokens import EmailVerificationToken, PasswordResetToken
+    from app.db.models.tokens import EmailChangeToken, EmailVerificationToken, PasswordResetToken
     from app.db.models.user_session import UserSession
 
 
@@ -42,6 +42,10 @@ class User(Base):
         cascade="all, delete-orphan"
     )
     resumes: Mapped[list["Resume"]] = relationship(cascade="all, delete-orphan")  # ADDED
+
+    email_change_tokens: Mapped[list["EmailChangeToken"]] = relationship(
+        cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email!r}>"

@@ -19,7 +19,7 @@ from typing import Generic, TypeVar
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from app.db.models.tokens import EmailVerificationToken, PasswordResetToken
+from app.db.models.tokens import EmailChangeToken, EmailVerificationToken, PasswordResetToken
 
 _T = TypeVar("_T", EmailVerificationToken, PasswordResetToken)
 
@@ -102,3 +102,33 @@ class EmailVerificationTokenRepository(_SingleUseTokenRepository):
 class PasswordResetTokenRepository(_SingleUseTokenRepository):
     def __init__(self) -> None:
         super().__init__(PasswordResetToken)
+
+class EmailChangeTokenRepository(_SingleUseTokenRepository):
+    """Email-change tokens (Phase 10, D24a): the generic single-use
+    mechanics, plus the pending address as the token's payload - the
+    one column the other token types do not carry."""
+
+    def __init__(self) -> None:
+        super().__init__(EmailChangeToken)
+
+    def create(
+        self,
+        db: Session,
+        *,
+        user_id: uuid.UUID,
+        token_hash: str,
+        expires_at: datetime,
+        new_email: str,
+    ) -> EmailChangeToken:
+        """The generic create has no new_email parameter; this override
+        exists to carry the pending address. consume/expire are
+        inherited unchanged - the lifecycle is identical."""
+        token = EmailChangeToken(
+            user_id=user_id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+            new_email=new_email,
+        )
+        db.add(token)
+        db.flush()
+        return token
