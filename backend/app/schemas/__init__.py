@@ -7,11 +7,13 @@ Import from here at call sites: `from app.schemas import RegisterRequest`.
 from app.schemas.analysis import AnalysisResponse
 from app.schemas.auth import (
     ChangePasswordRequest,
+    ConfirmEmailChangeRequest,
     LoginRequest,
     MessageResponse,
     PasswordResetConfirmRequest,
     PasswordResetRequest,
     RegisterRequest,
+    RequestEmailChangeRequest,
     UpdateProfileRequest,
     UserResponse,
     VerifyEmailRequest,
@@ -23,6 +25,7 @@ from app.schemas.resume_document import ResumeDocumentResponse, ResumeDocumentSa
 __all__ = [
     "AnalysisResponse",
     "ChangePasswordRequest",
+    "ConfirmEmailChangeRequest",
     "CreateMatchRequest",
     "LoginRequest",
     "MatchResponse",
@@ -30,6 +33,7 @@ __all__ = [
     "PasswordResetConfirmRequest",
     "PasswordResetRequest",
     "RegisterRequest",
+    "RequestEmailChangeRequest",
     "ResumeDetailResponse",
     "ResumeDocumentResponse",
     "ResumeDocumentSave",

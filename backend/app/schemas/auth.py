@@ -66,6 +66,19 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class RequestEmailChangeRequest(BaseModel):
+    """Phase 10 (D24b): the CURRENT password proves ownership of the
+    account before a change can be requested; new_email is the pending
+    address the token authorizes."""
+
+    current_password: str = Field(min_length=1, max_length=128)
+    new_email: EmailStr
+
+
+class ConfirmEmailChangeRequest(BaseModel):
+    token: str = Field(min_length=1, max_length=255)
+
+
 class VerifyEmailRequest(BaseModel):
     # Raw tokens are 43 chars of URL-safe base64; 255 is a generous bound.
     token: str = Field(min_length=1, max_length=255)

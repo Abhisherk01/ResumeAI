@@ -22,11 +22,13 @@ from app.core.cookies import (
 from app.core.ratelimit import RateLimiter
 from app.schemas import (
     ChangePasswordRequest,
+    ConfirmEmailChangeRequest,
     LoginRequest,
     MessageResponse,
     PasswordResetConfirmRequest,
     PasswordResetRequest,
     RegisterRequest,
+    RequestEmailChangeRequest,
     UpdateProfileRequest,
     UserResponse,
     VerifyEmailRequest,
@@ -56,6 +58,12 @@ password_reset_limiter = RateLimiter(
     limit=settings.PASSWORD_RESET_RATE_LIMIT_MAX,
     window_seconds=settings.PASSWORD_RESET_RATE_LIMIT_WINDOW_MINUTES * 60,
 )
+email_change_limiter = RateLimiter(
+    name="email-change",
+    limit=settings.TOKEN_RATE_LIMIT_MAX,
+    window_seconds=settings.TOKEN_RATE_LIMIT_WINDOW_MINUTES * 60,
+)
+
 token_limiter = RateLimiter(
     name="token",
     limit=settings.TOKEN_RATE_LIMIT_MAX,
@@ -158,6 +166,53 @@ def confirm_password_reset(
         message="Password updated. All signed-in sessions were logged out."
     )
 
+
+@router.post(
+    "/me/email",
+    response_model=MessageResponse,
+    dependencies=[Depends(email_change_limiter)],
+)
+def request_email_change(
+    payload: RequestEmailChangeRequest,
+    db: DbSession,
+    user: CurrentUser,
+    _csrf: CsrfGuard,  # mutating + session-authenticated -> CSRF required
+) -> MessageResponse:
+    """Start the email change (Phase 10, D24): the CURRENT password proves
+    ownership; the token goes to the NEW address. Every branch - wrong
+    password included? No: wrong password is 400 invalid_current_password,
+    the one branch the caller already knows the answer to. Enumeration
+    protection covers the TARGET address: taken and unknown look identical.
+    The change is NOT applied here - only the emailed token applies it."""
+    auth_service.request_email_change(
+        db,
+        user_id=user.id,
+        current_password=payload.current_password,
+        new_email=payload.new_email,
+    )
+    return MessageResponse(
+        message=(
+            "If that email address can be used, "
+            "a confirmation link has been sent to it."
+        )
+    )
+
+
+@router.post(
+    "/me/email/confirm",
+    response_model=MessageResponse,
+    dependencies=[Depends(email_change_limiter)],
+)
+def confirm_email_change(
+    payload: ConfirmEmailChangeRequest,
+    db: DbSession,
+    _csrf: CsrfGuard,
+) -> MessageResponse:
+    """Consume the token and swap the address. Anonymous-able by design:
+    the emailed link may be opened in a browser without the old session,
+    so only the token (rate-limited) authorizes this."""
+    auth_service.confirm_email_change(db, token=payload.token)
+    return MessageResponse(message="Email address updated.")
 
 @router.get("/me", response_model=UserResponse)
 def me(user: CurrentUser) -> UserResponse:

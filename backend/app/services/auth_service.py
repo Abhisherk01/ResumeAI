@@ -40,6 +40,7 @@ from app.domain.exceptions import (
 )
 from app.infrastructure.email import ConsoleEmailSender, EmailMessage, EmailSender
 from app.repositories.token_repository import (
+    EmailChangeTokenRepository,
     EmailVerificationTokenRepository,
     PasswordResetTokenRepository,
 )
@@ -53,6 +54,7 @@ _user_repo = UserRepository()
 _session_repo = UserSessionRepository()
 _email_tokens = EmailVerificationTokenRepository()
 _reset_tokens = PasswordResetTokenRepository()
+_email_change_tokens = EmailChangeTokenRepository()
 
 # The transport is a module attribute so tests can swap in a recording fake
 # (see conftest's _fake_email_sender fixture). Phase 12 replaces this single
@@ -153,6 +155,37 @@ def _build_reset_email(user: User, raw_token: str) -> EmailMessage:
             "and can be used once.\n"
             "If you didn't request a reset, you can safely ignore this email — "
             "your password is unchanged.\n"
+        ),
+    )
+
+
+def _build_email_change_email(user: User, raw_token: str, new_email: str) -> EmailMessage:
+    link = f"{settings.FRONTEND_BASE_URL}/settings?email-token={raw_token}"
+    return EmailMessage(
+        to=new_email,
+        subject="Confirm your new ResumeAI email address",
+        body=(
+            f"Hi {user.name},\n\n"
+            "We received a request to change your ResumeAI account email to this "
+            f"address ({new_email}):\n\n"
+            f"  {link}\n\n"
+            f"This link is valid for {settings.RESET_TOKEN_TTL_MINUTES} minutes "
+            "and can be used once.\n"
+            "If you didn't request this change, your email is unchanged - "
+            "you can safely ignore this email."
+        ),
+    )
+
+
+def _build_password_changed_email(user: User) -> EmailMessage:
+    return EmailMessage(
+        to=user.email,
+        subject="Your ResumeAI password was changed",
+        body=(
+            f"Hi {user.name},\n\n"
+            "Your ResumeAI account password was just changed. If this was you, no action is needed."
+            "\n\nIf you did NOT change your password, your account may be compromised - "
+            "reset it immediately from the login page."
         ),
     )
 
@@ -340,7 +373,73 @@ def reset_password(db: Session, *, token: str, new_password: str) -> None:
         if user is None:  # defensive: the FK makes this unreachable
             raise TokenInvalidError
         user.password_hash = security.hash_password(new_password)
+        # D24d: same tripwire on the anonymous-reset path - the worst-case
+        # takeover event must never be silent.
+        _safe_send(_build_password_changed_email(user))
         _session_repo.revoke_all_for_user(db, user_id=user.id, now=utcnow())
+
+
+def request_email_change(
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    current_password: str,
+    new_email: str,
+) -> str | None:
+    """Start an email change (Phase 10, D24): prove ownership with the
+    CURRENT password (D24b - a stolen session cannot silently take the
+    account's recovery anchor), then send a single-use token to the NEW
+    address (D24a). Anti-enumeration (D24c): the endpoint's response is
+    identical for every branch; if the new address belongs to ANY existing
+    account row, send nothing (silent no-op). The RAW token is returned
+    for tests only - the response body never carries it (S6-B)."""
+    normalized = normalize_email(new_email)
+    pending_email: EmailMessage | None = None
+    with _transaction(db):
+        user = _user_repo.get_by_id(db, user_id=user_id)
+        if user is None:  # defensive: unreachable via the API dependency
+            raise NotAuthenticatedError
+        if not security.verify_password(current_password, user.password_hash):
+            raise InvalidCurrentPasswordError
+        if normalized == normalize_email(user.email):
+            return None  # no-op: unchanged address, nothing to verify
+        if _user_repo.get_by_email(db, email=normalized) is not None:
+            return None  # D24c silent no-op: target address exists
+        now = utcnow()
+        _email_change_tokens.expire_active_for_user(db, user_id=user.id, now=now)
+        raw = security.generate_token()
+        _email_change_tokens.create(
+            db,
+            user_id=user.id,
+            token_hash=security.hash_token(raw),
+            expires_at=now + timedelta(minutes=settings.RESET_TOKEN_TTL_MINUTES),
+            new_email=normalized,
+        )
+        pending_email = _build_email_change_email(user, raw, normalized)
+    _safe_send(pending_email)
+    return raw
+
+
+def confirm_email_change(db: Session, *, token: str) -> User:
+    """Consume an email-change token and swap the account's email (D24).
+    The uniqueness re-check runs INSIDE the transaction: a target address
+    that was registered between request and confirm fails loudly here
+    (the request-side check was advisory; the DB unique constraint is the
+    authority). email_verified stays True (D24e): the token proved inbox
+    control of the new address; the account was already verified."""
+    with _transaction(db):
+        record = _email_change_tokens.consume(
+            db, token_hash=security.hash_token(token), now=utcnow()
+        )
+        if record is None:
+            raise TokenInvalidError
+        user = _user_repo.get_by_id(db, user_id=record.user_id)
+        if user is None:  # defensive: the FK makes this unreachable
+            raise TokenInvalidError
+        if _user_repo.get_by_email(db, email=record.new_email) is not None:
+            raise TokenInvalidError  # raced: target now taken - same generic error
+        user.email = record.new_email
+        return user
 
 
 def update_profile(db: Session, *, user_id: uuid.UUID, name: str) -> User:
@@ -384,9 +483,13 @@ def change_password(
         if not security.verify_password(current_password, user.password_hash):
             raise InvalidCurrentPasswordError
         user.password_hash = security.hash_password(new_password)
+        # D24d: the account-takeover tripwire, at the hook point Phase 3
+        # pre-reserved. Built inside the transaction; sent after commit (S6-A).
+        _pending_password_changed = _build_password_changed_email(user)
         _session_repo.revoke_all_for_user_except(
             db,
             user_id=user.id,
             except_token_hash=except_session_token_hash,
             now=utcnow(),
         )
+    _safe_send(_pending_password_changed)
