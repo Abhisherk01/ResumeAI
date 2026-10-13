@@ -206,7 +206,6 @@ def request_email_change(
 def confirm_email_change(
     payload: ConfirmEmailChangeRequest,
     db: DbSession,
-    _csrf: CsrfGuard,
 ) -> MessageResponse:
     """Consume the token and swap the address. Anonymous-able by design:
     the emailed link may be opened in a browser without the old session,

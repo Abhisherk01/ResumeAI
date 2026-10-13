@@ -305,4 +305,20 @@ def test_request_change_requires_csrf(client, email_outbox):
     assert response.status_code == 403
     assert _error_code(response) == "csrf_failed"
 
+def test_confirm_endpoint_works_without_a_session(client, email_outbox, db):
+    """Pins the anonymous-able contract (D24): the emailed token is the
+    authorization - no session, no CSRF (the verify-email precedent). A
+    fresh client carries no cookies at all."""
+    result = auth_service.register(
+        db, email="user@example.com", password=PASSWORD, name="T"
+    )
+    auth_service.verify_email(db, token=result.verification_token)
+    user = db.query(User).filter_by(email="user@example.com").one()
+    raw = auth_service.request_email_change(
+        db, user_id=user.id, current_password=PASSWORD, new_email=NEW_EMAIL
+    )
 
+    response = client.post("/api/v1/auth/me/email/confirm", json={"token": raw})
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Email address updated."
