@@ -24,6 +24,7 @@ const analysis: Analysis = {
   improvements: ["Quantify more achievements."],
   provider: "mock",
   created_at: "2026-10-07T00:00:00Z",
+  resume_filename: "",
 };
 
 describe("AnalysisPanel", () => {

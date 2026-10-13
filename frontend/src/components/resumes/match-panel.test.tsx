@@ -27,6 +27,7 @@ const match: Match = {
     improvements: ["The description mentions terms your resume does not."],
   },
   created_at: "2026-10-08T00:00:00Z",
+  resume_filename: "",
 };
 
 describe("MatchPanel", () => {

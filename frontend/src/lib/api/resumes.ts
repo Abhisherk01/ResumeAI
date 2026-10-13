@@ -35,6 +35,9 @@ export interface Analysis {
   improvements: string[];
   provider: string;
   created_at: string;
+  // Phase 9 history endpoints populate this via their resume join;
+  // the per-resume endpoints send an empty string.
+  resume_filename: string;
 }
 
 export interface Match {
@@ -53,6 +56,7 @@ export interface Match {
   provider: string;
   suggestions: { strengths: string[]; improvements: string[] };
   created_at: string;
+  resume_filename: string;
 }
 
 const BASE_URL =
