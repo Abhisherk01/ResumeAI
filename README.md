@@ -149,7 +149,7 @@ Status
 6    AI analysis    Complete
 7    Job matching    Complete
 8    Editor, templates & PDF export    Complete
-9    History & reports    Planned
+9    History & reports    Complete
 10    Integration, security & performance    Planned
 11    Docker & CI    Planned
 12    Deployment (Vercel + Render/Railway + Neon)    Planned
