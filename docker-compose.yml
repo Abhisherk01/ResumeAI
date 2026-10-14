@@ -23,6 +23,10 @@ services:
     environment:
       # Inside Docker, the database host is the service name "db", not localhost
       DATABASE_URL: postgresql+psycopg://resumeai:resumeai@db:5432/resumeai
+      # Windows host: the default watchfile notifications do not propagate
+      # into the container, so uvicorn --reload misses code edits. Polling
+      # fixes the reload loop at a small CPU cost (Phase 10, D26).
+      WATCHFILES_FORCE_POLLING: "true"
     ports:
       - "8000:8000"
     volumes:
