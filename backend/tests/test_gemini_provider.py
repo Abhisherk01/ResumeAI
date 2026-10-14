@@ -71,12 +71,12 @@ def test_parse_rejects_schema_violations_as_provider_error():
 
 def test_suggest_maps_sdk_errors_to_provider_error():
     provider = GeminiAnalysisProvider.__new__(GeminiAnalysisProvider)  # skip __init__
-    provider._model = type("FakeModel", (), {})()
+    provider._client = type("FakeClient", (), {"models": type("FakeModels", (), {})()})()
 
-    def boom(_prompt):
+    def boom(**_kwargs):
         raise ConnectionError("network down")
 
-    provider._model.generate_content = boom
+    provider._client.models.generate_content = boom
 
     with pytest.raises(AiProviderError):
         provider.suggest(resume_text="text", breakdown=BREAKDOWN)
@@ -84,12 +84,12 @@ def test_suggest_maps_sdk_errors_to_provider_error():
 
 def test_suggest_happy_path_with_fake_model():
     provider = GeminiAnalysisProvider.__new__(GeminiAnalysisProvider)
-    provider._model = type("FakeModel", (), {})()
+    provider._client = type("FakeClient", (), {"models": type("FakeModels", (), {})()})()
 
     class FakeResponse:
         text = '{"strengths": ["Quantified"], "improvements": ["Add LinkedIn"]}'
 
-    provider._model.generate_content = lambda _prompt: FakeResponse()
+    provider._client.models.generate_content = lambda **_kwargs: FakeResponse()
 
     result = provider.suggest(resume_text="text", breakdown=BREAKDOWN)
 
@@ -141,12 +141,12 @@ def test_match_parse_rejects_non_json_and_schema_violations():
 
 def test_match_suggest_maps_sdk_errors_to_provider_error():
     provider = GeminiAnalysisProvider.__new__(GeminiAnalysisProvider)
-    provider._model = type("FakeModel", (), {})()
+    provider._client = type("FakeClient", (), {"models": type("FakeModels", (), {})()})()
 
-    def boom(_prompt):
+    def boom(**_kwargs):
         raise TimeoutError("quota exceeded")
 
-    provider._model.generate_content = boom
+    provider._client.models.generate_content = boom
 
     with pytest.raises(AiProviderError):
         provider.suggest_match(
@@ -160,12 +160,12 @@ def test_match_suggest_maps_sdk_errors_to_provider_error():
 
 def test_match_suggest_happy_path_with_fake_model():
     provider = GeminiAnalysisProvider.__new__(GeminiAnalysisProvider)
-    provider._model = type("FakeModel", (), {})()
+    provider._client = type("FakeClient", (), {"models": type("FakeModels", (), {})()})()
 
     class FakeResponse:
         text = '{"strengths": ["Aligned"], "improvements": ["Add kubernetes"]}'
 
-    provider._model.generate_content = lambda _prompt: FakeResponse()
+    provider._client.models.generate_content = lambda **_kwargs: FakeResponse()
 
     result = provider.suggest_match(
         resume_text="text",

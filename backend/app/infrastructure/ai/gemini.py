@@ -22,7 +22,7 @@ import json
 import logging
 from typing import Any
 
-import google.generativeai as genai
+from google import genai
 from pydantic import BaseModel, Field, ValidationError
 
 from app.core.config import settings
@@ -184,13 +184,14 @@ class GeminiAnalysisProvider:
         api_key = settings.GEMINI_API_KEY
         if not api_key:
             raise AiProviderError
-        genai.configure(api_key=api_key)
-        self._model = genai.GenerativeModel(_MODEL_NAME)
+        self._client = genai.Client(api_key=api_key)
 
     def suggest(self, *, resume_text: str, breakdown: dict) -> SuggestionResult:
         prompt = _build_prompt(resume_text, breakdown)
         try:
-            response = self._model.generate_content(prompt)
+            response = self._client.models.generate_content(
+                model=_MODEL_NAME, contents=prompt
+            )
         except Exception as exc:
             # SDK exceptions (network, quota, auth) — one boundary error.
             logger.warning("Gemini generate_content failed: %s", exc)
@@ -214,7 +215,9 @@ class GeminiAnalysisProvider:
             missing_keywords,
         )
         try:
-            response = self._model.generate_content(prompt)
+            response = self._client.models.generate_content(
+                model=_MODEL_NAME, contents=prompt
+            )
         except Exception as exc:
             logger.warning("Gemini generate_content failed: %s", exc)
             raise AiProviderError from exc
