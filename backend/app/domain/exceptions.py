@@ -115,6 +115,19 @@ class PdfExportError(DomainError):
     internal_error, the standard envelope."""
 
 
+class CurrentSessionRevocationError(DomainError):
+    """The per-id session-revocation route was asked to revoke the session
+    performing the request. Distinct from NotAuthenticatedError: the UI
+    must offer sign-out for that, and silently allowing it would strand
+    the user mid-action (Phase 10, D23)."""
+
+
+class SessionNotFoundError(DomainError):
+    """No session with this id belongs to this user (Phase 10, D23). A
+    foreign id and a missing id are deliberately indistinguishable -
+    both surface as 404, never 403 (the IDOR posture)."""
+
+
 class AiProviderError(DomainError):
     """The AI provider failed — network, quota, malformed response, or a
     response that failed schema validation (P6-3: a malformed LLM answer is

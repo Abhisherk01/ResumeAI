@@ -97,3 +97,53 @@ class UserSessionRepository:
             .values(revoked_at=now)
         )
         return db.execute(stmt).rowcount
+
+    def list_live_for_user(
+        self, db: Session, *, user_id: uuid.UUID
+    ) -> list[UserSession]:
+        """Live (unrevoked) sessions for a user, newest first (Phase 10,
+        D23). Expiry is NOT filtered here: deciding validity is business
+        logic (the repo docstring's own rule), so expired-but-unrevoked
+        rows are returned and the service marks them."""
+        stmt = (
+            select(UserSession)
+            .where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
+            .order_by(UserSession.created_at.desc())
+        )
+        return list(db.scalars(stmt).all())
+
+    def get_for_user(
+        self,
+        db: Session,
+        *,
+        session_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> UserSession | None:
+        """One session by id, ownership-filtered - a foreign id is
+        indistinguishable from a missing one (the IDOR posture)."""
+        stmt = select(UserSession).where(
+            UserSession.id == session_id, UserSession.user_id == user_id
+        )
+        return db.scalars(stmt).first()
+
+    def revoke_by_id_for_user(
+        self,
+        db: Session,
+        *,
+        session_id: uuid.UUID,
+        user_id: uuid.UUID,
+        now: datetime,
+    ) -> bool:
+        """Atomically revoke one live session by id, ownership-filtered.
+        True exactly once per session; False when the id is foreign,
+        unknown, or already revoked. Bulk-UPDATE style: no re-read."""
+        stmt = (
+            update(UserSession)
+            .where(
+                UserSession.id == session_id,
+                UserSession.user_id == user_id,
+                UserSession.revoked_at.is_(None),
+            )
+            .values(revoked_at=now)
+        )
+        return db.execute(stmt).rowcount == 1

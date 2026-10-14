@@ -25,6 +25,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.domain.exceptions import (
     AiProviderError,
     CsrfVerificationError,
+    CurrentSessionRevocationError,
     DocumentNotFoundError,
     DocumentParseError,
     DomainError,
@@ -37,6 +38,7 @@ from app.domain.exceptions import (
     NotAuthenticatedError,
     RateLimitExceededError,
     ResumeNotFoundError,
+    SessionNotFoundError,
     TokenInvalidError,
     UnsupportedFileTypeError,
 )
@@ -115,6 +117,16 @@ _DOMAIN_ERROR_MAP: dict[type[DomainError], tuple[int, str, str]] = {
         404,
         "document_not_found",
         "No document saved for this resume yet.",
+    ),
+    CurrentSessionRevocationError: (
+        409,
+        "current_session_revocation",
+        "Use sign-out to end this session.",
+    ),
+    SessionNotFoundError: (
+        404,
+        "session_not_found",
+        "Session not found.",
     ),
     ResumeNotFoundError: (
         404,

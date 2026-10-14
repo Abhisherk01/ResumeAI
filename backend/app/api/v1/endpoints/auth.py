@@ -10,6 +10,8 @@ is applied per endpoint group; the authenticated account endpoints (PATCH
 per-endpoint limits for them are a Phase 10 hardening candidate.
 """
 
+import uuid
+
 from fastapi import APIRouter, Depends, Request, Response
 
 from app.api.deps import AuthContextDep, CsrfGuard, CurrentUser, DbSession
@@ -29,11 +31,12 @@ from app.schemas import (
     PasswordResetRequest,
     RegisterRequest,
     RequestEmailChangeRequest,
+    SessionResponse,
     UpdateProfileRequest,
     UserResponse,
     VerifyEmailRequest,
 )
-from app.services import auth_service
+from app.services import account_service, auth_service
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -212,6 +215,58 @@ def confirm_email_change(
     so only the token (rate-limited) authorizes this."""
     auth_service.confirm_email_change(db, token=payload.token)
     return MessageResponse(message="Email address updated.")
+
+# --- Sessions manager (Phase 10, D23) -------------------------------------
+
+
+@router.get("/sessions", response_model=list[SessionResponse])
+def list_sessions(db: DbSession, context: AuthContextDep) -> list[SessionResponse]:
+    """The caller's live sessions, newest first. is_current comes from the
+    resolved AuthContext - the one session whose token hash matches this
+    request's cookie."""
+    views = account_service.list_sessions(
+        db, user_id=context.user.id, current_token_hash=context.session.token_hash
+    )
+    return [
+        SessionResponse(
+            id=view.session.id,
+            created_at=view.session.created_at,
+            expires_at=view.session.expires_at,
+            is_current=view.is_current,
+        )
+        for view in views
+    ]
+
+
+@router.delete("/sessions/{session_id}", status_code=204)
+def revoke_session(
+    db: DbSession,
+    context: AuthContextDep,
+    _csrf: CsrfGuard,  # mutating + session-authenticated -> CSRF required
+    session_id: uuid.UUID,
+) -> None:
+    """Revoke one session by id. Revoking the CURRENT session is refused
+    (409) - sign-out is the dedicated path; foreign ids 404."""
+    account_service.revoke_session(
+        db,
+        user_id=context.user.id,
+        session_id=session_id,
+        current_token_hash=context.session.token_hash,
+    )
+
+
+@router.post("/sessions/revoke-others", response_model=MessageResponse)
+def revoke_other_sessions(
+    db: DbSession,
+    context: AuthContextDep,
+    _csrf: CsrfGuard,  # mutating + session-authenticated -> CSRF required
+) -> MessageResponse:
+    """Revoke every session except the current one. Returns the count so
+    the UI can say exactly what happened."""
+    revoked = account_service.revoke_other_sessions(
+        db, user_id=context.user.id, current_token_hash=context.session.token_hash
+    )
+    return MessageResponse(message=f"Signed out {revoked} other session(s).")
 
 @router.get("/me", response_model=UserResponse)
 def me(user: CurrentUser) -> UserResponse:

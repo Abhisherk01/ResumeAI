@@ -108,3 +108,16 @@ class UserResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class SessionResponse(BaseModel):
+    """One session in the D23 list. What is deliberately ABSENT: token
+    hashes and CSRF hashes - the response schema physically cannot leak
+    them."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    created_at: datetime
+    expires_at: datetime
+    is_current: bool = False
