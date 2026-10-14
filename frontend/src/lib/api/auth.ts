@@ -109,3 +109,29 @@ export async function confirmEmailChange(payload: {
     body: payload,
   });
 }
+
+/** Phase 10 (D23): the sessions manager. The response deliberately carries
+ * NO token material - the backend schema cannot leak what it does not
+ * have. is_current is computed by the backend from the request's cookie. */
+export interface SessionInfo {
+  id: string;
+  created_at: string;
+  expires_at: string;
+  is_current: boolean;
+}
+
+export async function listSessions(): Promise<SessionInfo[]> {
+  return apiFetch<SessionInfo[]>("/auth/sessions");
+}
+
+export async function revokeSession(sessionId: string): Promise<void> {
+  return apiFetch<void>(`/auth/sessions/${sessionId}`, { method: "DELETE" });
+}
+
+/** Returns how many other sessions were signed out (the backend's
+ * message carries the count; the code is what the UI asserts). */
+export async function revokeOtherSessions(): Promise<MessageResponse> {
+  return apiFetch<MessageResponse>("/auth/sessions/revoke-others", {
+    method: "POST",
+  });
+}

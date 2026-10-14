@@ -13,6 +13,7 @@ const CODE_MESSAGES: Record<string, string> = {
   ai_provider_error:
     "The analysis service is temporarily unavailable. Please try again shortly.",
   resume_not_found: "Resume not found. It may have been deleted.",
+  current_session_revocation: "Use sign-out to end this session.",
   document_not_found:
     "Nothing is saved yet. Save your document first, then try again.",
   invalid_job_description:

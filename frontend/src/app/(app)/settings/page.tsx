@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { EmailChangeConfirm } from "@/components/settings/email-change-confirm";
 import { EmailChangeForm } from "@/components/settings/email-change-form";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
+import { SessionsSection } from "@/components/settings/sessions-section";
 import { UpdateProfileForm } from "@/components/settings/update-profile-form";
 
 export const metadata: Metadata = { title: "Settings - ResumeAI" };
@@ -26,6 +27,8 @@ export default function SettingsPage() {
         <EmailChangeForm />
         <hr className="border-border" />
         <ChangePasswordForm />
+        <hr className="border-border" />
+        <SessionsSection />
       </div>
       <p className="text-xs text-ink-soft">
         Theme preferences live in the sidebar theme switcher.
