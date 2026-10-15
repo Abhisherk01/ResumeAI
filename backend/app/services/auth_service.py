@@ -38,7 +38,12 @@ from app.domain.exceptions import (
     NotAuthenticatedError,
     TokenInvalidError,
 )
-from app.infrastructure.email import ConsoleEmailSender, EmailMessage, EmailSender
+from app.infrastructure.email import (
+    ConsoleEmailSender,
+    EmailMessage,
+    EmailSender,
+    ResendEmailSender,
+)
 from app.repositories.token_repository import (
     EmailChangeTokenRepository,
     EmailVerificationTokenRepository,
@@ -56,10 +61,7 @@ _email_tokens = EmailVerificationTokenRepository()
 _reset_tokens = PasswordResetTokenRepository()
 _email_change_tokens = EmailChangeTokenRepository()
 
-# The transport is a module attribute so tests can swap in a recording fake
-# (see conftest's _fake_email_sender fixture). Phase 12 replaces this single
-# line's right-hand side with an SMTP-based sender selection.
-_email_sender: EmailSender = ConsoleEmailSender()
+
 
 # Verified whenever the submitted email is unknown (see login). Running one
 # Argon2 verification on the unknown-email path costs the same CPU time as

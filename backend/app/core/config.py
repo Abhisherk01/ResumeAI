@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     # lands in Phase 6 Step 3 behind the same AnalysisProvider protocol.
     AI_PROVIDER: str = "mock"
 
+    # --- Email (Phase 12, D31) ---
+    # "console" (default) logs emails; "resend" posts to Resend's API.
+    EMAIL_PROVIDER: str = "console"
+    RESEND_API_KEY: str = ""
+    # Resend requires a verified "from" address (their dashboard).
+    EMAIL_FROM_ADDRESS: str = "ResumeAI <onboarding@resend.dev>"
+
     # Gemini API key (Phase 6 Step 3). Read from the environment directly by
     # the provider (not stored in Settings) so it never appears in logs or
     # error messages. Enable Gemini by setting AI_PROVIDER=gemini + this key.
