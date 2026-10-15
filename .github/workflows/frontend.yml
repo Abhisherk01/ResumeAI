@@ -1,0 +1,32 @@
+name: frontend
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies (npm ci from lockfile)
+        working-directory: frontend
+        run: npm ci
+
+      - name: Vitest
+        working-directory: frontend
+        run: npm test
+
+      - name: TypeScript (tsc --noEmit)
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        working-directory: frontend
+        run: npm run lint
