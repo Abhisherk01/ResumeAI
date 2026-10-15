@@ -119,6 +119,20 @@ def normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
+# The transport is a module attribute so tests can swap in a recording fake
+# (see conftest's _fake_email_sender fixture). Phase 12 (D31): the provider
+# is selected by settings - console (default, dev/test) or resend (production).
+# The selection runs at import; tests are locked to the fake by conftest
+# regardless of the setting.
+if settings.EMAIL_PROVIDER == "resend":
+    _email_sender: EmailSender = ResendEmailSender(
+        api_key=settings.RESEND_API_KEY,
+        from_address=settings.EMAIL_FROM_ADDRESS,
+    )
+else:
+    _email_sender: EmailSender = ConsoleEmailSender()
+
+
 def _safe_send(message: EmailMessage) -> None:
     """Send after commit; log-and-continue on transport failure (S6-A)."""
     try:
