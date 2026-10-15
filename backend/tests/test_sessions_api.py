@@ -50,13 +50,19 @@ def _add_session(db, user_id, token_hash: str) -> UserSession:
     from app.core.clock import utcnow
 
     repo = UserSessionRepository()
-    return repo.create(
+    session = repo.create(
         db,
         user_id=user_id,
         token_hash=token_hash,
         csrf_token_hash="x" * 64,
         expires_at=utcnow() + timedelta(hours=24),
     )
+    # D28's first lesson: the repo only FLUSHES. On SQLite's shared
+    # connection the uncommitted row was visible to the app anyway; on
+    # real Postgres each connection sees only COMMITTED data. Commit so
+    # the API requests (other connections) can see these rows.
+    db.commit()
+    return session
 
 
 def _user_id(db, email: str) -> uuid.UUID:
