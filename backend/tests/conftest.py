@@ -2,7 +2,17 @@ import os
 from collections.abc import Generator
 
 # Must be set BEFORE the app is imported so settings pick them up.
-os.environ["DATABASE_URL"] = "sqlite://"  # in-memory SQLite for tests
+# Local runs default to in-memory SQLite. CI (Phase 11, D28) sets
+# TEST_DATABASE_URL to a disposable Postgres. The DEDICATED variable is
+# deliberate, not DATABASE_URL itself: the backend container already has
+# DATABASE_URL aimed at the dev database, and the test fixture drops/
+# recreates schema - honoring it would wipe dev data on every local
+# `docker compose exec pytest`.
+_test_db_url = os.environ.get("TEST_DATABASE_URL")
+if _test_db_url:
+    os.environ["DATABASE_URL"] = _test_db_url
+else:
+    os.environ["DATABASE_URL"] = "sqlite://"  # in-memory SQLite for tests
 os.environ["ENVIRONMENT"] = "test"
 
 import pytest
