@@ -151,7 +151,7 @@ Status
 8    Editor, templates & PDF export    Complete
 9    History & reports    Complete
 10    Integration, security & performance    Complete
-11    Docker & CI    Planned
+11    Docker & CI    Complete
 12    Deployment (Vercel + Render/Railway + Neon)    Planned
 13    Portfolio documentation    Planned
 
