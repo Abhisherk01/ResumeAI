@@ -1,15 +1,4 @@
-## 1. [README.md](http://README.md)
-
-1. Open the repo in VS Code and open `README.md` (the one at `C:\Users\rajbh\Desktop\ResumeAnalyser\resumeai\README.md`)
-2. Click inside the file, press `Ctrl+A` (select all), then `Delete`
-3. Paste the block below
-4. `Ctrl+S` — same file, same path, new content
-
-## 2. LICENSE
-
-"At root" means directly inside `C:\Users\rajbh\Desktop\ResumeAnalyser\resumeai\` — the same folder as `docker-compose.yml`, **not** inside `backend/`, `frontend/`, or `docs/`. Create a new file named exactly `LICENSE` (no extension), paste the block I gave you last message, save.
-
-## 3. The new README content
+##  [README.md](http://README.md)
 
 ```markdown
 
