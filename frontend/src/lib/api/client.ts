@@ -1,3 +1,4 @@
+// rebuild 2026-10-17: re-inline api base url
 /**
  * Typed API client — the single gateway to the backend.
  *
