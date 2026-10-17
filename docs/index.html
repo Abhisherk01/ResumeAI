@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ResumeAI — full-stack AI resume analyser</title>
+<meta name="description" content="Upload a resume, understand it, match it, export it. Provenance-backed AI analysis built on Next.js 14, FastAPI and PostgreSQL — live on Vercel + Render + Neon.">
+<meta property="og:title" content="ResumeAI — full-stack AI resume analyser">
+<meta property="og:description" content="Provenance-backed resume analysis: upload, review, score, match, edit, export.">
+<meta name="theme-color" content="#0b0d12">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%238b5cf6'/%3E%3Ctext x='32' y='44' font-family='Arial,sans-serif' font-size='36' font-weight='700' fill='white' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+:root{
+  --bg:#0b0d12;
+  --surface:#131722;
+  --surface-2:#171c29;
+  --text:#e8ebf4;
+  --muted:#9aa4ba;
+  --line:rgba(148,163,184,.12);
+  --accent:#8b5cf6;
+  --accent-2:#2dd4bf;
+  --shadow-d:rgba(0,0,0,.55);
+  --shadow-l:rgba(255,255,255,.03);
+  --radius:20px;
+}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Inter,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+.glow{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0;opacity:.55}
+.glow-1{width:540px;height:540px;top:-200px;left:-140px;background:rgba(139,92,246,.16)}
+.glow-2{width:480px;height:480px;bottom:-180px;right:-140px;background:rgba(45,212,191,.10)}
+.container{max-width:1080px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:8px}
+
+/* ---------- nav ---------- */
+header.nav{display:flex;align-items:center;gap:20px;padding:24px 0}
+.brand{font-weight:800;font-size:1.15rem;letter-spacing:.2px;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:10px}
+.brand .dot{width:13px;height:13px;border-radius:4px;background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 0 14px rgba(139,92,246,.6)}
+.nav-links{margin-left:auto;display:flex;gap:22px;align-items:center}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:.92rem;transition:color .15s ease}
+.nav-links a:hover{color:var(--text)}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;gap:9px;padding:11px 21px;border-radius:14px;text-decoration:none;font-weight:600;font-size:.95rem;transition:transform .15s ease,box-shadow .15s ease}
+.btn-neu{color:var(--text);background:var(--surface);box-shadow:6px 6px 14px var(--shadow-d),-5px -5px 12px var(--shadow-l),inset 0 1px 0 rgba(255,255,255,.04);border:1px solid var(--line)}
+.btn-neu:hover{transform:translateY(-1px)}
+.btn-primary{color:#fff;background:linear-gradient(135deg,#7c3aed,#8b5cf6 55%,#a78bfa);box-shadow:6px 6px 16px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.25)}
+.btn-primary:hover{transform:translateY(-1px)}
+.btn .ext{font-size:.8rem;opacity:.75}
+
+/* ---------- hero ---------- */
+.hero{padding:76px 0 56px}
+.pill{display:inline-flex;align-items:center;gap:9px;padding:7px 15px;border-radius:999px;font-size:.82rem;color:var(--muted);background:var(--surface);box-shadow:inset 3px 3px 8px rgba(0,0,0,.45),inset -2px -2px 6px var(--shadow-l);border:1px solid var(--line)}
+.pill .live{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 10px #34d399}
+h1{font-size:clamp(2.3rem,5.4vw,3.55rem);line-height:1.08;margin:24px 0 18px;letter-spacing:-.02em}
+h1 em{font-style:normal;background:linear-gradient(120deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{max-width:660px;color:var(--muted);font-size:1.08rem;margin:0 0 30px}
+.hero-cta{display:flex;gap:14px;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:52px}
+.stat{background:var(--surface);border-radius:var(--radius);padding:22px 16px;text-align:center;box-shadow:8px 8px 18px var(--shadow-d),-6px -6px 14px var(--shadow-l),inset 0 1px 0 rgba(255,255,255,.04);border:1px solid var(--line)}
+.stat b{display:block;font-size:1.5rem;letter-spacing:-.02em}
+.stat span{color:var(--muted);font-size:.82rem}
+
+/* ---------- sections ---------- */
+section{padding:58px 0 6px}
+h2{font-size:1.72rem;margin:0 0 8px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 34px;max-width:640px}
+
+/* ---------- features ---------- */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.card{background:var(--surface);border-radius:var(--radius);padding:24px;box-shadow:10px 10px 22px var(--shadow-d),-7px -7px 16px var(--shadow-l),inset 0 1px 0 rgba(255,255,255,.04);border:1px solid var(--line);transition:transform .18s ease}
+.card:hover{transform:translateY(-3px)}
+.icon{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;margin-bottom:16px;background:var(--surface-2);box-shadow:inset 4px 4px 9px rgba(0,0,0,.5),inset -3px -3px 7px var(--shadow-l)}
+.di{width:16px;height:16px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 0 12px rgba(139,92,246,.55)}
+.card:nth-child(2n) .di{background:linear-gradient(135deg,var(--accent-2),#4ade80);box-shadow:0 0 12px rgba(45,212,191,.45)}
+.card h3{margin:0 0 8px;font-size:1.04rem}
+.card p{margin:0;color:var(--muted);font-size:.92rem}
+
+/* ---------- pipeline ---------- */
+.pipeline{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:6px}
+.step{background:var(--surface);border-radius:16px;padding:18px 12px;text-align:center;box-shadow:inset 4px 4px 10px rgba(0,0,0,.45),inset -3px -3px 8px var(--shadow-l);border:1px solid var(--line)}
+.step .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#6d28d9);color:#fff;font-size:.78rem;font-weight:700;margin-bottom:9px}
+.step b{display:block;font-size:.9rem;margin-bottom:2px}
+.step span{font-size:.72rem;color:var(--muted)}
+
+/* ---------- stack ---------- */
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{padding:9px 17px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-size:.86rem;box-shadow:5px 5px 12px var(--shadow-d),-4px -4px 10px var(--shadow-l)}
+
+/* ---------- architecture ---------- */
+pre.ascii{
+  background:var(--surface);border-radius:var(--radius);padding:30px 26px;overflow-x:auto;
+  box-shadow:inset 7px 7px 16px rgba(0,0,0,.5),inset -5px -5px 12px var(--shadow-l);
+  border:1px solid var(--line);margin:0;
+  font:13px/1.55 ui-monospace,"Cascadia Code",Consolas,Menlo,monospace;color:#c3cce1;
+}
+.note{color:var(--muted);font-size:.92rem;margin:16px 2px 0}
+
+/* ---------- screenshots ---------- */
+.shots{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.shots figure{margin:0;background:var(--surface);border-radius:var(--radius);padding:12px;box-shadow:10px 10px 22px var(--shadow-d),-7px -7px 16px var(--shadow-l);border:1px solid var(--line)}
+.shots img{width:100%;display:block;border-radius:12px;aspect-ratio:1440/900;object-fit:cover;background:#0e1119}
+.shots figcaption{text-align:center;color:var(--muted);font-size:.85rem;padding:11px 0 5px}
+
+/* ---------- security ---------- */
+.sec-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.mini{background:var(--surface);border-radius:16px;padding:20px;box-shadow:8px 8px 18px var(--shadow-d),-6px -6px 14px var(--shadow-l),inset 0 1px 0 rgba(255,255,255,.04);border:1px solid var(--line)}
+.mini h3{margin:0 0 7px;font-size:.98rem}
+.mini p{margin:0;color:var(--muted);font-size:.86rem}
+
+/* ---------- dev log ---------- */
+.log{display:grid;gap:10px}
+.row{display:flex;align-items:center;gap:14px;background:var(--surface);border-radius:14px;padding:13px 18px;border:1px solid var(--line);box-shadow:6px 6px 14px var(--shadow-d),-4px -4px 10px var(--shadow-l)}
+.pn{font:700 .78rem/1 ui-monospace,Consolas,monospace;color:var(--accent-2);background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.25);padding:7px 0;border-radius:9px;min-width:46px;text-align:center;flex:none}
+.row .t{font-weight:600;font-size:.95rem}
+.row .d{color:var(--muted);font-size:.85rem;margin-left:auto;text-align:right}
+.badge{flex:none;font-size:.72rem;color:#34d399;border:1px solid rgba(52,211,153,.3);background:rgba(52,211,153,.08);padding:4px 11px;border-radius:999px;white-space:nowrap}
+
+/* ---------- footer ---------- */
+footer{margin-top:78px;padding:34px 0 48px;border-top:1px solid var(--line)}
+.foot{display:flex;align-items:center;gap:18px;flex-wrap:wrap;color:var(--muted);font-size:.88rem}
+.foot a{color:var(--muted);text-decoration:none}
+.foot a:hover{color:var(--text)}
+.foot .spacer{margin-left:auto}
+
+/* ---------- responsive ---------- */
+@media (max-width:900px){
+  .grid{grid-template-columns:1fr 1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .pipeline{grid-template-columns:repeat(3,1fr)}
+  .shots{grid-template-columns:1fr}
+  .sec-cards{grid-template-columns:1fr 1fr}
+  .nav-links a:not(.btn){display:none}
+  .row .d{display:none}
+}
+@media (max-width:560px){
+  .grid{grid-template-columns:1fr}
+  .sec-cards{grid-template-columns:1fr}
+  .pipeline{grid-template-columns:repeat(2,1fr)}
+  .hero{padding-top:54px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+<div class="glow glow-1" aria-hidden="true"></div>
+<div class="glow glow-2" aria-hidden="true"></div>
+
+<header class="nav container">
+  <a class="brand" href="#top"><span class="dot" aria-hidden="true"></span>ResumeAI</a>
+  <nav class="nav-links" aria-label="Sections">
+    <a href="#features">Features</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#screenshots">Screenshots</a>
+    <a href="#log">Log</a>
+    <a class="btn btn-neu" href="https://resume-ai-psi-three.vercel.app">Open live app <span class="ext">&#8599;</span></a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <section class="hero container">
+    <span class="pill"><span class="live" aria-hidden="true"></span>Live on Vercel + Render + Neon &middot; 13 phases shipped</span>
+    <h1>Your resume, <em>explained</em>.</h1>
+    <p class="lede">ResumeAI takes a resume from raw PDF to polished export: AI-assisted extraction you review before saving, deterministic scoring with stored provenance, job-description matching, four export templates &mdash; and honest disclaimers at every step. Scores are estimates, never ATS verdicts.</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="https://resume-ai-psi-three.vercel.app">Open the live app <span class="ext">&#8599;</span></a>
+      <a class="btn btn-neu" href="https://github.com/Abhisherk01/ResumeAI">View source</a>
+    </div>
+    <div class="stats">
+      <div class="stat"><b>13</b><span>phases shipped</span></div>
+      <div class="stat"><b>159</b><span>frontend tests</span></div>
+      <div class="stat"><b>4</b><span>export templates</span></div>
+      <div class="stat"><b>2</b><span>AI providers</span></div>
+    </div>
+  </section>
+
+  <section id="features" class="container">
+    <h2>What it does</h2>
+    <p class="sub">Every AI output is provenance-backed: deterministic scores are computed separately from LLM text, and every report stores the scoring version that produced it.</p>
+    <div class="grid">
+      <article class="card">
+        <div class="icon"><span class="di" aria-hidden="true"></span></div>
+        <h3>Upload &amp; review</h3>
+        <p>PDF/DOCX with validation and text extraction. Nothing is stored until you approve the extracted data.</p>
+      </article>
+      <article class="card">
+        <div class="icon"><span class="di" aria-hidden="true"></span></div>
+        <h3>Explainable scoring</h3>
+        <p>A deterministic engine, versioned per report. The numbers and the narrative never blur together.</p>
+      </article>
+      <article class="card">
+        <div class="icon"><span class="di" aria-hidden="true"></span></div>
+        <h3>LLM suggestions</h3>
+        <p>Concrete improvement ideas from a provider behind an abstraction &mdash; Gemini by default, mock in tests.</p>
+      </article>
+      <article class="card">
+        <div class="icon"><span class="di" aria-hidden="true"></span></div>
+        <h3>Job matching</h3>
+        <p>Paste any job description and get skill-gap analysis plus keyword-coverage reporting.</p>
+      </article>
+      <article class="card">
+        <div class="icon"><span class="di" aria-hidden="true"></span></div>
+        <h3>Editor &amp; export</h3>
+        <p>Four professional templates, accent colors, live editing, and one-click polished PDF export.</p>
+      </article>
+      <article class="card">
+        <div class="icon"><span class="di" aria-hidden="true"></span></div>
+        <h3>History</h3>
+        <p>Every analysis and match report is saved to your account and re-openable at any time.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="container">
+    <h2>How it flows</h2>
+    <p class="sub">Six steps from raw document to finished PDF &mdash; each one scoped to your account.</p>
+    <div class="pipeline">
+      <div class="step"><span class="n">1</span><b>Upload</b><span>PDF / DOCX</span></div>
+      <div class="step"><span class="n">2</span><b>Review</b><span>approve extraction</span></div>
+      <div class="step"><span class="n">3</span><b>Score</b><span>versioned &amp; explainable</span></div>
+      <div class="step"><span class="n">4</span><b>Match</b><span>skill gap + keywords</span></div>
+      <div class="step"><span class="n">5</span><b>Edit</b><span>templates + colors</span></div>
+      <div class="step"><span class="n">6</span><b>Export</b><span>polished PDF</span></div>
+    </div>
+  </section>
+
+  <section class="container">
+    <h2>Built with</h2>
+    <p class="sub">A deliberate, boring-in-the-right-places stack.</p>
+    <div class="chips">
+      <span class="chip">Next.js 14</span>
+      <span class="chip">TypeScript strict</span>
+      <span class="chip">Tailwind</span>
+      <span class="chip">Radix UI</span>
+      <span class="chip">FastAPI</span>
+      <span class="chip">Pydantic v2</span>
+      <span class="chip">SQLAlchemy 2.x</span>
+      <span class="chip">PostgreSQL 16</span>
+      <span class="chip">Alembic</span>
+      <span class="chip">Gemini</span>
+      <span class="chip">Resend</span>
+      <span class="chip">Docker Compose</span>
+      <span class="chip">GitHub Actions</span>
+      <span class="chip">Vitest</span>
+      <span class="chip">pytest</span>
+      <span class="chip">Vercel</span>
+      <span class="chip">Render</span>
+      <span class="chip">Neon</span>
+    </div>
+  </section>
+
+  <section id="architecture" class="container">
+    <h2>Architecture</h2>
+    <p class="sub">The browser only talks to Next.js. In production, <code>/api/v1/*</code> is rewritten to FastAPI on Render &mdash; same-origin requests, first-party session cookies, no CORS on the critical path.</p>
+<pre class="ascii">              ┌───────────────────────────────┐
+              │         Browser (you)         │
+              └───────────────┬───────────────┘
+                              │
+              ┌───────────────▼───────────────┐
+              │      Next.js 14 · Vercel      │
+              │  App Router · TS · Tailwind   │
+              └───────────────┬───────────────┘
+                              │  HTTPS · session cookie + CSRF header
+              ┌───────────────▼───────────────┐
+              │    FastAPI · Render (Docker)  │
+              │   Pydantic v2 · SQLAlchemy    │
+              │  ┌─────────────────────────┐  │
+              │  │ AI provider abstraction │  │
+              │  │  Gemini / mock (tests)  │  │
+              │  └─────────────────────────┘  │
+              └──────┬──────────────────┬─────┘
+                     │                  │
+        ┌────────────▼─────────┐  ┌─────▼────────────────┐
+        │  Neon · PostgreSQL   │  │   Resend · email     │
+        │ Alembic migrations   │  │   verify · reset     │
+        └──────────────────────┘  └──────────────────────┘</pre>
+  </section>
+
+  <section id="screenshots" class="container">
+    <h2>Screenshots</h2>
+    <p class="sub">Captured from the live deployment in the midnight theme.</p>
+    <div class="shots">
+      <figure>
+        <img src="screenshots/dashboard.png" alt="ResumeAI dashboard with getting-started cards" width="1440" height="900" loading="lazy">
+        <figcaption>Dashboard</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/analysis.png" alt="Explainable resume analysis report" width="1440" height="900" loading="lazy">
+        <figcaption>Analysis report</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/match.png" alt="Job description match report with skill gaps" width="1440" height="900" loading="lazy">
+        <figcaption>Job match</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="container">
+    <h2>Security, taken personally</h2>
+    <p class="sub">The auth system was built to a written threat model, not vibes.</p>
+    <div class="sec-cards">
+      <div class="mini"><h3>Sessions</h3><p>Random 256-bit cookie token; only its SHA-256 hash is stored. No JWTs. Revocable individually or globally.</p></div>
+      <div class="mini"><h3>CSRF</h3><p>Double-submit token bound to the session row, echoed on every mutating request.</p></div>
+      <div class="mini"><h3>Passwords</h3><p>Argon2id with OWASP-aligned defaults, no composition rules (NIST 800-63B), transparent legacy upgrades.</p></div>
+      <div class="mini"><h3>Rate limits</h3><p>Sliding window per IP with Retry-After surfaced to the UI, plus anti-enumeration on every auth path.</p></div>
+    </div>
+  </section>
+
+  <section id="log" class="container">
+    <h2>Development log</h2>
+    <p class="sub">Thirteen phases, 0 through 12, each closed out with green gates before the next began. Full detail in the <a href="https://github.com/Abhisherk01/ResumeAI#development-log" style="color:var(--accent-2)">README</a>.</p>
+    <div class="log">
+      <div class="row"><span class="pn">P0</span><span class="t">Requirements &amp; architecture</span><span class="d">Scope, stack, honest-AI principles</span><span class="badge">Complete</span></div>
+      <div class="row"><span class="pn">P1</span><span class="t">Project initialization</span><span class="d">Monorepo, tooling baseline, env hygiene</span><span class="badge">Complete</span></div>
+      <div class="row"><span class="pn">P2</span><span class="t">Design system &amp; landing page</span><span class="d">Tailwind + Radix, theme switcher</span><span class="badge">Complete</span></div>
+      <div class="row"><span class="pn">P3</span><span class="t">Authentication &amp; sessions</span><span class="d">Hashed tokens, CSRF, Argon2id, rate limits</span><span class="badge">Complete</span></div>
+      <div class="row"><span class="pn">P4</span><span class="t">Dashboard &amp; settings</span><span class="d">Profile + password flows, live identity</span><span class="badge">Complete</span></div>
+      <div class="row"><span class="pn">P5</span><span class="t">Upload &amp; document processing</span><span class="d">PDF/DOCX extraction, review-before-save</span><span class="badge">Complete</span></div>
+      <div class="row"><span class="pn">P6</span><span class="t">Scoring &amp; LLM suggestions</span><span class="d">Versioned deterministic scoring</span><span class="badge">Complete</span></div>
+      <div class="row"><span class="pn">P7</span><span class="t">Job description matching</span><span class="d">Skill gap + keyword coverage</span><span class="badge">Complete</span></div>
+      <div class="row"><span class="pn">P8</span><span class="t">Editor &amp; PDF export</span><span class="d">Four templates, accent colors</span><span class="badge">Complete</span></div>
+      <div class="row"><span class="pn">P9</span><span class="t">History &amp; reports</span><span class="d">Per-user archives</span><span class="badge">Complete</span></div>
+      <div class="row"><span class="pn">P10</span><span class="t">Integration &amp; hardening</span><span class="d">Security headers, end-to-end flows</span><span class="badge">Complete</span></div>
+      <div class="row"><span class="pn">P11</span><span class="t">Docker &amp; CI</span><span class="d">Compose stack, Actions gates</span><span class="badge">Complete</span></div>
+      <div class="row"><span class="pn">P12</span><span class="t">Deployment</span><span class="d">Vercel + Render + Neon, Resend email</span><span class="badge">Complete</span></div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="foot container">
+    <a class="brand" href="#top"><span class="dot" aria-hidden="true"></span>ResumeAI</a>
+    <a href="https://github.com/Abhisherk01/ResumeAI">GitHub</a>
+    <a href="https://resume-ai-psi-three.vercel.app">Live app</a>
+    <a href="https://resumeai-09qw.onrender.com/docs">API docs</a>
+    <span class="spacer"></span>
+    <span>MIT License &middot; &copy; <span id="y">2026</span> <a href="https://github.com/Abhisherk01">Abhisherk01</a></span>
+  </div>
+</footer>
+
+<script>document.getElementById('y').textContent = new Date().getFullYear();</script>
+</body>
+</html>
