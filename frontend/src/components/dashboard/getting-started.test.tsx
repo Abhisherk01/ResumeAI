@@ -49,10 +49,23 @@ describe("GettingStarted", () => {
     expect(item?.querySelector(".line-through")).toBeNull();
   });
 
-  it("always shows the Phase 5 badge on the resume step", () => {
+  it("links the resume step to the resumes page", () => {
     renderList(verified);
 
-    expect(screen.getByText("Phase 5")).toBeInTheDocument();
-    expect(screen.getByText("Upload your first resume")).toBeInTheDocument();
+    const item = screen.getByText("Upload your first resume").closest("li");
+    const link = item?.querySelector("a");
+    expect(link).not.toBeNull();
+    expect(link).toHaveAttribute("href", "/resumes");
+    expect(screen.queryByText("Phase 5")).not.toBeInTheDocument();
+  });
+
+  it("links the theme step to settings", () => {
+    renderList(verified);
+
+    const item = screen
+      .getByText("Personalize your workspace with a theme")
+      .closest("li");
+    const link = item?.querySelector("a");
+    expect(link).toHaveAttribute("href", "/settings");
   });
 });
