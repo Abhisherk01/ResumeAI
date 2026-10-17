@@ -1,20 +1,17 @@
-## 1. [README.md](http://README.md) — swap the text, keep the file
+## 1. [README.md](http://README.md)
 
 1. Open the repo in VS Code and open `README.md` (the one at `C:\Users\rajbh\Desktop\ResumeAnalyser\resumeai\README.md`)
-
 2. Click inside the file, press `Ctrl+A` (select all), then `Delete`
-
 3. Paste the block below
-
 4. `Ctrl+S` — same file, same path, new content
 
-## 2. LICENSE — create new, "at root"
+## 2. LICENSE
 
 "At root" means directly inside `C:\Users\rajbh\Desktop\ResumeAnalyser\resumeai\` — the same folder as `docker-compose.yml`, **not** inside `backend/`, `frontend/`, or `docs/`. Create a new file named exactly `LICENSE` (no extension), paste the block I gave you last message, save.
 
-## 3. The new README content (paste over the old text)
+## 3. The new README content
 
-````markdown
+```markdown
 
 # ResumeAI
 
@@ -297,6 +294,7 @@ docker compose run --rm frontend npm run build
 Remove-Item -Recurse -Force frontend\.next   # PowerShell; rm -rf frontend/.next elsewhere
 
 docker compose start frontend
+```
 
 ```
 
@@ -591,6 +589,10 @@ MIT — see [LICENSE](LICENSE).
 Built by [@Abhisherk01]([https://github.com/Abhisherk01](https://github.com/Abhisherk01)) as a production-grade portfolio
 
 project: phased development, tested, documented, and deployed without hand-waving.
+
+
+
+```
 
 
 
