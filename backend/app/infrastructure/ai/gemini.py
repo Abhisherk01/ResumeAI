@@ -31,7 +31,7 @@ from app.infrastructure.ai.base import SuggestionResult
 
 logger = logging.getLogger(__name__)
 
-_MODEL_NAME = "gemini-1.5-flash"  # free-tier default; the paid swap is Phase 12
+_MODEL_NAME = "gemini-3.5-flash-lite"  # free-tier default; 1.5-flash retired 2025-09-24
 
 _MAX_PER_LIST = 5
 
